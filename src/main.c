@@ -19,22 +19,42 @@
 #define VR_START_Z 26 
 // -------------------------------------------------
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <fmilib.h>
+#include "environment.h"
+
+// --- VALUE REFERENCES FROM XML ---
+#define VR_UX 12  
+#define VR_UY 13
+#define VR_UZ 14
+
+#define VR_X  19   
+#define VR_Y  20
+#define VR_Z  21
+#define VR_VX 16
+
+// REPLACE WITH YOUR ACTUAL START VRs!
+#define VR_START_X 000 
+#define VR_START_Y 000 
+#define VR_START_Z 000 
+// -------------------------------------------------
+
 // Mandatory callback for FMILibrary to handle logging
 void jm_logger(jm_callbacks* c, jm_string module, jm_log_level_enu_t log_level, jm_string message) {
     // Left empty to keep the console output clean
 }
 
 // Executes a single rollout (episode)
-// Added a FILE pointer to save telemetry for visualization
 double run_episode(fmi2_import_t* fmu, double start_x, double start_y, double start_z, double thrust_x, FILE* csv_file) {
     
     double t_start = 0.0;
-    double t_end = 20.0;     
-    double step_size = 0.05; 
+    double t_end = 20.0;     // Run for 20 virtual seconds
+    double step_size = 0.05; // 50ms timestep
     
     fmi2_import_setup_experiment(fmu, fmi2_true, 1e-4, t_start, fmi2_true, t_end);
 
-    // INJECT START COORDINATES (X, Y=Altitude, Z=Depth)
+    // 1. INJECT RANDOMIZED START COORDINATES
     fmi2_value_reference_t vr_starts[3] = { VR_START_X, VR_START_Y, VR_START_Z };
     double start_vals[3] = { start_x, start_y, start_z };
     fmi2_import_set_real(fmu, vr_starts, 3, start_vals);
@@ -55,26 +75,26 @@ double run_episode(fmi2_import_t* fmu, double start_x, double start_y, double st
     // Main Simulation Loop
     while (current_time < t_end) {
         
-        // 1. Read current pose from FMU
+        // A. Read current pose from FMU
         fmi2_import_get_real(fmu, vr_outputs, 4, output_values);
         double current_x = output_values[0];
         double current_y = output_values[1]; // Altitude
         double current_z = output_values[2]; // Depth
 
-        // Save telemetry to CSV for Python visualization
+        // B. Save telemetry to CSV for Python visualization
         if (csv_file != NULL) {
             fprintf(csv_file, "%.3f,%.3f,%.3f,%.3f\n", current_time, current_x, current_y, current_z);
         }
 
-        // 2. Compute 3D Raycasting Lidar 
+        // C. Compute 3D Raycasting Lidar 
         compute_lidar_rays(current_x, current_y, current_z, lidar_distances);
 
-        // Print the Lidar summary every 20 steps (1.0 virtual seconds)
+        // D. Print Lidar summary every 1.0 virtual seconds
         if (step_counter % 20 == 0) {
             print_lidar_rays(lidar_distances, current_time, current_x, current_y, current_z);
         }
 
-        // 3. Inject forces and advance physics
+        // E. Inject forces and advance physics
         fmi2_import_set_real(fmu, vr_inputs, 3, input_values);
         fmi2_import_do_step(fmu, current_time, step_size, fmi2_true);
         
@@ -82,8 +102,10 @@ double run_episode(fmi2_import_t* fmu, double start_x, double start_y, double st
         step_counter++;
     }
     
+    // Read final X position for testing
     fmi2_import_get_real(fmu, vr_outputs, 4, output_values);
     
+    // Terminate and RESET the FMU for the next episode
     fmi2_import_terminate(fmu);
     fmi2_import_reset(fmu); 
 
@@ -91,7 +113,7 @@ double run_episode(fmi2_import_t* fmu, double start_x, double start_y, double st
 }
 
 int main() {
-    // 1. Initialize environment (Fibonacci sphere for Lidar)
+    // 1. Initialize Raycasting Geometry (Fibonacci sphere)
     init_lidar();
 
     // 2. Initialize FMILibrary and callbacks
@@ -123,23 +145,33 @@ int main() {
     // Instantiate the FMU ONLY ONCE
     fmi2_import_instantiate(fmu, "DroneTest", fmi2_cosimulation, NULL, fmi2_false);
 
-    // --- EXECUTE TEST EPISODE AND RECORD TELEMETRY ---
-    printf("Starting Raycasting Lidar Test...\n");
+    // --- DOMAIN RANDOMIZATION & TESTING ---
+    printf("Initializing Procedural Environment...\n");
 
-    // Open CSV file
+    unsigned int generation_seed = 4; 
+    double start_x, start_y, start_z;
+    
+    // Generate the map layout and a safe spawn point based on the seed
+    generate_random_environment(generation_seed, &start_x, &start_y, &start_z);
+
+    // NUOVA RIGA: Esporta l'ambiente generato per Python
+    export_environment("environment.csv");
+
+    printf("Map Generation Complete (Seed: %u)\n", generation_seed);
+    printf("Drone Safe Spawn: X=%.2f, Y=%.2f, Z=%.2f\n", start_x, start_y, start_z);
+
+    // Open CSV file for telemetry
     FILE* telemetry_csv = fopen("telemetry.csv", "w");
     if (telemetry_csv != NULL) {
-        fprintf(telemetry_csv, "time,x,y,z\n"); // CSV Header
+        fprintf(telemetry_csv, "time,x,y,z\n"); 
     } else {
         printf("Warning: Could not open telemetry.csv for writing.\n");
     }
 
-    // Episode 1: Start at X=0, Y=10 (Altitude), Z=0. Thrust 10N on X.
-    printf("\n>>> EPISODE 1: Start(0, 10, 0), Thrust(10,0,0)\n");
-    
-    double fitness_1 = run_episode(fmu, 0.0, 10.0, 0.0, 10.0, telemetry_csv);
-    
-    printf(">>> EPISODE 1 COMPLETED. Final X = %.2f m\n", fitness_1);
+    // Run the episode with the procedurally generated spawn coordinates
+    printf("\n>>> STARTING EPISODE...\n");
+    double fitness = run_episode(fmu, start_x, start_y, start_z, 10.0, telemetry_csv);
+    printf(">>> EPISODE COMPLETED. Final X = %.2f m\n", fitness);
 
     if (telemetry_csv != NULL) {
         fclose(telemetry_csv);

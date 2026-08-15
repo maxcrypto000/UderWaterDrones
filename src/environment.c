@@ -1,20 +1,75 @@
 #include "environment.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+// Define the global map variables
+double map_x_min = -50.0;
+double map_x_max =  50.0;
+double map_y_min =   0.0;
+double map_y_max = 100.0;
+double map_z_min = -50.0;
+double map_z_max =  50.0;
 
-#define NUM_OBSTACLES 1
-static Obstacle3D obstacles[NUM_OBSTACLES] = {
-    // Center at Altitude Y = 0.0. Radius = 15.0m
-    {15.0, 0.0, 15.0, 12.0}   
-};
-
-// Global array storing the normalized directions of our 64 rays
+int num_active_obstacles = 0;
+Obstacle3D obstacles[MAX_OBSTACLES];
 static LidarRay rays[NUM_RAYS];
+
+// Helper: Generates a random double between min and max
+static double rand_double(double min, double max) {
+    return min + ((double)rand() / RAND_MAX) * (max - min);
+}
+
+void generate_random_environment(unsigned int seed, double* out_startX, double* out_startY, double* out_startZ) {
+    // 1. Lock the Random Number Generator to the specific Generation Seed
+    srand(seed);
+
+    // 2. Randomize Patrol Area bounds (e.g., between 40m and 80m from center)
+    map_x_max = rand_double(40.0, 80.0);
+    map_x_min = -map_x_max;
+    map_z_max = rand_double(40.0, 80.0);
+    map_z_min = -map_z_max;
+    map_y_min = 0.0; // Sea floor is always 0
+    map_y_max = rand_double(50.0, 150.0); // Altitude ceiling
+
+    // 3. Randomize Mountains (Amount, Size, Position)
+    num_active_obstacles = 2 + (rand() % 5); // 2 to 6 mountains
+    
+    for (int i = 0; i < num_active_obstacles; i++) {
+        obstacles[i].radius = rand_double(8.0, 25.0);
+        // Keep mountains completely inside the map boundaries
+        obstacles[i].x = rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
+        obstacles[i].z = rand_double(map_z_min + obstacles[i].radius, map_z_max - obstacles[i].radius);
+        obstacles[i].y = 0.0; // Grounded on the sea floor
+    }
+
+    // 4. Find a Safe Spawn Position
+    int safe_spawn = 0;
+    while (!safe_spawn) {
+        *out_startX = rand_double(map_x_min + 10.0, map_x_max - 10.0);
+        *out_startZ = rand_double(map_z_min + 10.0, map_z_max - 10.0);
+        *out_startY = rand_double(10.0, map_y_max - 10.0); // Never spawn exactly on the floor
+
+        safe_spawn = 1;
+        // Verify collision against all active mountains
+        for (int i = 0; i < num_active_obstacles; i++) {
+            double dx = *out_startX - obstacles[i].x;
+            double dy = *out_startY - obstacles[i].y;
+            double dz = *out_startZ - obstacles[i].z;
+            
+            // Add a 5.0 meter safety buffer around the mountain
+            double safe_distance = obstacles[i].radius + 5.0;
+            if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                safe_spawn = 0; // Invalid spawn, try again
+                break;
+            }
+        }
+    }
+}
 
 void init_lidar(void) {
     // Distribute rays uniformly in 3D using Fibonacci Sphere
@@ -42,7 +97,7 @@ static double shoot_single_ray(double ox, double oy, double oz, double dx, doubl
     double min_dist = MAX_LIDAR_RANGE;
 
     // 1. Check Intersection with 3D Obstacles
-    for (int i = 0; i < NUM_OBSTACLES; i++) {
+    for (int i = 0; i < num_active_obstacles; i++) {
         double lx = obstacles[i].x - ox;
         double ly = obstacles[i].y - oy;
         double lz = obstacles[i].z - oz;
@@ -80,16 +135,16 @@ static double shoot_single_ray(double ox, double oy, double oz, double dx, doubl
     double t_bounds;
     
     // Check X bounds
-    if (dx > 0) { t_bounds = (MAP_X_MAX - ox) / dx; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
-    if (dx < 0) { t_bounds = (MAP_X_MIN - ox) / dx; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
+    if (dx > 0) { t_bounds = (map_x_max - ox) / dx; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
+    if (dx < 0) { t_bounds = (map_x_min - ox) / dx; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
     
     // Check Y bounds (Altitude)
-    if (dy > 0) { t_bounds = (MAP_Y_MAX - oy) / dy; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
-    if (dy < 0) { t_bounds = (MAP_Y_MIN - oy) / dy; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
+    if (dy > 0) { t_bounds = (map_y_max - oy) / dy; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
+    if (dy < 0) { t_bounds = (map_y_min - oy) / dy; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
     
     // Check Z bounds (Depth)
-    if (dz > 0) { t_bounds = (MAP_Z_MAX - oz) / dz; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
-    if (dz < 0) { t_bounds = (MAP_Z_MIN - oz) / dz; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
+    if (dz > 0) { t_bounds = (map_z_max - oz) / dz; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
+    if (dz < 0) { t_bounds = (map_z_min - oz) / dz; if (t_bounds > 0 && t_bounds < min_dist) min_dist = t_bounds; }
 
     return min_dist;
 }
@@ -117,4 +172,23 @@ void print_lidar_rays(double distances[NUM_RAYS], double current_time, double dx
                i, rays[i].dir_x, rays[i].dir_y, rays[i].dir_z, distances[i]);
     }
     printf("----------------------------------------------------------\n");
+}
+void export_environment(const char* filename) {
+    FILE* f = fopen(filename, "w");
+    if (f == NULL) {
+        printf("Warning: Could not open %s for writing.\n", filename);
+        return;
+    }
+    
+    // Write Map Boundaries
+    fprintf(f, "BOUNDS,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", 
+            map_x_min, map_x_max, map_y_min, map_y_max, map_z_min, map_z_max);
+    
+    // Write Active Obstacles
+    for (int i = 0; i < num_active_obstacles; i++) {
+        fprintf(f, "OBS,%.2f,%.2f,%.2f,%.2f\n", 
+                obstacles[i].x, obstacles[i].y, obstacles[i].z, obstacles[i].radius);
+    }
+    
+    fclose(f);
 }
