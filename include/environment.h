@@ -24,6 +24,7 @@ extern double map_x_min, map_x_max;
 extern double map_y_min, map_y_max;
 extern double map_z_min, map_z_max;
 extern int num_active_obstacles;
+extern double target_x, target_y, target_z;
 extern Obstacle3D obstacles[MAX_OBSTACLES];
 
 // --- FUNCTIONS ---

@@ -34,6 +34,7 @@ CMakeFiles/DroneTest.dir/src/lidar_sim.c.obj: C:/Users/maxbu/Desktop/uni/Verific
 
 CMakeFiles/DroneTest.dir/src/main.c.obj: C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/main.c \
   C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/include/environment.h \
+  C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/include/neural_network.h \
   C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI/fmi_import_context.h \
   C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI/fmi_import_options.h \
   C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI/fmi_import_terminals_and_icons.h \
@@ -376,7 +377,25 @@ CMakeFiles/DroneTest.dir/src/main.c.obj: C:/Users/maxbu/Desktop/uni/VerificaEval
   C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/xsavesintrin.h \
   C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/xtestintrin.h
 
-CMakeFiles/DroneTest.dir/src/neural_network.c.obj: C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/neural_network.c
+CMakeFiles/DroneTest.dir/src/neural_network.c.obj: C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/neural_network.c \
+  C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/include/neural_network.h \
+  C:/msys64/mingw64/include/_mingw.h \
+  C:/msys64/mingw64/include/_mingw_mac.h \
+  C:/msys64/mingw64/include/_mingw_secapi.h \
+  C:/msys64/mingw64/include/corecrt.h \
+  C:/msys64/mingw64/include/corecrt_wstdlib.h \
+  C:/msys64/mingw64/include/crtdefs.h \
+  C:/msys64/mingw64/include/errno.h \
+  C:/msys64/mingw64/include/limits.h \
+  C:/msys64/mingw64/include/malloc.h \
+  C:/msys64/mingw64/include/math.h \
+  C:/msys64/mingw64/include/sdks/_mingw_ddk.h \
+  C:/msys64/mingw64/include/sec_api/stdlib_s.h \
+  C:/msys64/mingw64/include/stdlib.h \
+  C:/msys64/mingw64/include/vadefs.h \
+  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/limits.h \
+  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/mm_malloc.h \
+  C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/syslimits.h
 
 
 C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/environment.c:
@@ -469,6 +488,8 @@ C:/msys64/mingw64/include/sec_api/stdio_s.h:
 
 C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI2/fmi2_enums.h:
 
+C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/include/neural_network.h:
+
 C:/msys64/mingw64/include/sec_api/stdlib_s.h:
 
 C:/msys64/mingw64/include/ole2.h:
@@ -547,10 +568,6 @@ C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/mwaitxintrin.h:
 
 C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI2/fmi2_function_types.h:
 
-C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/avx2intrin.h:
-
-C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI3/fmi3_import_capi.h:
-
 C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/smmintrin.h:
 
 C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI2/fmi2_import.h:
@@ -570,6 +587,10 @@ C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/avx512vbmi2intrin.h:
 C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI3/fmi3PlatformTypes.h:
 
 C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI3/fmi3_enums.h:
+
+C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/avx2intrin.h:
+
+C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/lib/FMILibrary/include/FMI3/fmi3_import_capi.h:
 
 C:/msys64/mingw64/include/winapifamily.h:
 

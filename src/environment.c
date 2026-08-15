@@ -18,7 +18,7 @@ double map_z_max =  50.0;
 int num_active_obstacles = 0;
 Obstacle3D obstacles[MAX_OBSTACLES];
 static LidarRay rays[NUM_RAYS];
-
+double target_x = 0.0, target_y = 0.0, target_z = 0.0;
 // Helper: Generates a random double between min and max
 static double rand_double(double min, double max) {
     return min + ((double)rand() / RAND_MAX) * (max - min);
@@ -65,6 +65,25 @@ void generate_random_environment(unsigned int seed, double* out_startX, double* 
             double safe_distance = obstacles[i].radius + 5.0;
             if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
                 safe_spawn = 0; // Invalid spawn, try again
+                break;
+            }
+        }
+    }
+    // 5. Find a Safe Target Position
+    int safe_target = 0;
+    while (!safe_target) {
+        target_x = rand_double(map_x_min + 10.0, map_x_max - 10.0);
+        target_z = rand_double(map_z_min + 10.0, map_z_max - 10.0);
+        target_y = rand_double(10.0, map_y_max - 10.0);
+
+        safe_target = 1;
+        for (int i = 0; i < num_active_obstacles; i++) {
+            double dx = target_x - obstacles[i].x;
+            double dy = target_y - obstacles[i].y;
+            double dz = target_z - obstacles[i].z;
+            double safe_distance = obstacles[i].radius + 5.0;
+            if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                safe_target = 0; 
                 break;
             }
         }
@@ -189,6 +208,8 @@ void export_environment(const char* filename) {
         fprintf(f, "OBS,%.2f,%.2f,%.2f,%.2f\n", 
                 obstacles[i].x, obstacles[i].y, obstacles[i].z, obstacles[i].radius);
     }
+
+    fprintf(f, "TARGET,%.2f,%.2f,%.2f\n", target_x, target_y, target_z);
     
     fclose(f);
 }

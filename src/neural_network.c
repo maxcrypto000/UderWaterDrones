@@ -1,0 +1,58 @@
+#include "neural_network.h"
+#include <stdlib.h>
+#include <math.h>
+
+// --- ACTIVATION FUNCTIONS ---
+
+// Hyperbolic tangent: squashes any number into the range [-1.0, 1.0]
+static double activation_tanh(double x) {
+    return tanh(x);
+}
+
+// Helper: Generates a random weight between -1.0 and 1.0
+static double random_weight(void) {
+    return ((double)rand() / RAND_MAX) * 2.0 - 1.0;
+}
+
+// --- NETWORK FUNCTIONS ---
+
+void nn_init_random(NeuralNetwork* nn) {
+    // Initialize Input to Hidden Layer (W1, b1)
+    for (int i = 0; i < NN_HIDDEN_SIZE; i++) {
+        nn->b1[i] = random_weight();
+        for (int j = 0; j < NN_INPUT_SIZE; j++) {
+            nn->W1[i][j] = random_weight();
+        }
+    }
+    
+    // Initialize Hidden to Output Layer (W2, b2)
+    for (int i = 0; i < NN_OUTPUT_SIZE; i++) {
+        nn->b2[i] = random_weight();
+        for (int j = 0; j < NN_HIDDEN_SIZE; j++) {
+            nn->W2[i][j] = random_weight();
+        }
+    }
+}
+
+void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], double outputs[NN_OUTPUT_SIZE]) {
+    double hidden[NN_HIDDEN_SIZE];
+
+    // 1. Pass data from Input Layer to Hidden Layer
+    for (int i = 0; i < NN_HIDDEN_SIZE; i++) {
+        double sum = nn->b1[i];
+        for (int j = 0; j < NN_INPUT_SIZE; j++) {
+            sum += nn->W1[i][j] * inputs[j];
+        }
+        hidden[i] = activation_tanh(sum);
+    }
+
+    // 2. Pass data from Hidden Layer to Output Layer
+    for (int i = 0; i < NN_OUTPUT_SIZE; i++) {
+        double sum = nn->b2[i];
+        for (int j = 0; j < NN_HIDDEN_SIZE; j++) {
+            sum += nn->W2[i][j] * hidden[j];
+        }
+        // Output is squashed between -1.0 (Full Reverse) and 1.0 (Full Forward)
+        outputs[i] = activation_tanh(sum); 
+    }
+}
