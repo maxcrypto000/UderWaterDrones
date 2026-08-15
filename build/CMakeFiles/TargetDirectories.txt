@@ -1,0 +1,3 @@
+C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles/DroneTest.dir
+C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles/edit_cache.dir
+C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles/rebuild_cache.dir

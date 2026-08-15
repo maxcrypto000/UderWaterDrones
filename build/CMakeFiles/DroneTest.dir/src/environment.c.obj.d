@@ -1,0 +1,14 @@
+CMakeFiles/DroneTest.dir/src/environment.c.obj: \
+ C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/environment.c \
+ C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/include/environment.h \
+ C:/msys64/mingw64/include/stdio.h \
+ C:/msys64/mingw64/include/corecrt_stdio_config.h \
+ C:/msys64/mingw64/include/corecrt.h C:/msys64/mingw64/include/_mingw.h \
+ C:/msys64/mingw64/include/_mingw_mac.h \
+ C:/msys64/mingw64/include/_mingw_secapi.h \
+ C:/msys64/mingw64/include/vadefs.h \
+ C:/msys64/mingw64/include/sdks/_mingw_ddk.h \
+ C:/msys64/mingw64/include/_mingw_off_t.h \
+ C:/msys64/mingw64/include/swprintf.inl \
+ C:/msys64/mingw64/include/sec_api/stdio_s.h \
+ C:/msys64/mingw64/include/math.h C:/msys64/mingw64/include/crtdefs.h
