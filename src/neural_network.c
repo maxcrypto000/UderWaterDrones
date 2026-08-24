@@ -1,6 +1,7 @@
 #include "neural_network.h"
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 
 // --- ACTIVATION FUNCTIONS ---
 
@@ -55,4 +56,26 @@ void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], doubl
         // Output is squashed between -1.0 (Full Reverse) and 1.0 (Full Forward)
         outputs[i] = activation_tanh(sum); 
     }
+    
+}
+void nn_save(NeuralNetwork* nn, const char* filename) {
+    FILE* f = fopen(filename, "wb"); // "wb" sta per Write Binary
+    if (f != NULL) {
+        // Scrive l'intera struttura (pesi e bias) in un colpo solo
+        fwrite(nn, sizeof(NeuralNetwork), 1, f);
+        fclose(f);
+        printf(">>> Pesi neurali salvati con successo in: %s\n", filename);
+    } else {
+        printf(">>> ERRORE: Impossibile salvare i pesi in %s\n", filename);
+    }
+}
+
+int nn_load(NeuralNetwork* nn, const char* filename) {
+    FILE* f = fopen(filename, "rb"); // "rb" sta per Read Binary
+    if (f != NULL) {
+        fread(nn, sizeof(NeuralNetwork), 1, f);
+        fclose(f);
+        return 1;
+    }
+    return 0;
 }

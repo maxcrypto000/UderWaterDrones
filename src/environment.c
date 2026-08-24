@@ -19,40 +19,47 @@ int num_active_obstacles = 0;
 Obstacle3D obstacles[MAX_OBSTACLES];
 static LidarRay rays[NUM_RAYS];
 double target_x = 0.0, target_y = 0.0, target_z = 0.0;
+static unsigned int env_rand_state = 1;
+
+static int env_rand(void) {
+    env_rand_state = env_rand_state * 1103515245 + 12345;
+    return (unsigned int)(env_rand_state / 65536) % 32768;
+}
+
 // Helper: Generates a random double between min and max
-static double rand_double(double min, double max) {
-    return min + ((double)rand() / RAND_MAX) * (max - min);
+static double env_rand_double(double min, double max) {
+    return min + ((double)env_rand() / 32767.0) * (max - min);
 }
 
 void generate_random_environment(unsigned int seed, double* out_startX, double* out_startY, double* out_startZ) {
     // 1. Lock the Random Number Generator to the specific Generation Seed
-    srand(seed);
+    env_rand_state = seed;
 
     // 2. Randomize Patrol Area bounds (e.g., between 40m and 80m from center)
-    map_x_max = rand_double(40.0, 80.0);
+    map_x_max = env_rand_double(40.0, 80.0);
     map_x_min = -map_x_max;
-    map_z_max = rand_double(40.0, 80.0);
+    map_z_max = env_rand_double(40.0, 80.0);
     map_z_min = -map_z_max;
     map_y_min = 0.0; // Sea floor is always 0
-    map_y_max = rand_double(50.0, 150.0); // Altitude ceiling
+    map_y_max = env_rand_double(40.0, 50.0); // Altitude ceiling
 
     // 3. Randomize Mountains (Amount, Size, Position)
-    num_active_obstacles = 2 + (rand() % 5); // 2 to 6 mountains
+    num_active_obstacles = 2 + (env_rand() % 5); // 2 to 6 mountains
     
     for (int i = 0; i < num_active_obstacles; i++) {
-        obstacles[i].radius = rand_double(8.0, 25.0);
+        obstacles[i].radius = env_rand_double(8.0, 25.0);
         // Keep mountains completely inside the map boundaries
-        obstacles[i].x = rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
-        obstacles[i].z = rand_double(map_z_min + obstacles[i].radius, map_z_max - obstacles[i].radius);
+        obstacles[i].x = env_rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
+        obstacles[i].z = env_rand_double(map_z_min + obstacles[i].radius, map_z_max - obstacles[i].radius);
         obstacles[i].y = 0.0; // Grounded on the sea floor
     }
 
     // 4. Find a Safe Spawn Position
     int safe_spawn = 0;
     while (!safe_spawn) {
-        *out_startX = rand_double(map_x_min + 10.0, map_x_max - 10.0);
-        *out_startZ = rand_double(map_z_min + 10.0, map_z_max - 10.0);
-        *out_startY = rand_double(10.0, map_y_max - 10.0); // Never spawn exactly on the floor
+        *out_startX = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
+        *out_startZ = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
+        *out_startY = env_rand_double(10.0, map_y_max - 10.0); // Never spawn exactly on the floor
 
         safe_spawn = 1;
         // Verify collision against all active mountains
@@ -72,9 +79,9 @@ void generate_random_environment(unsigned int seed, double* out_startX, double* 
     // 5. Find a Safe Target Position
     int safe_target = 0;
     while (!safe_target) {
-        target_x = rand_double(map_x_min + 10.0, map_x_max - 10.0);
-        target_z = rand_double(map_z_min + 10.0, map_z_max - 10.0);
-        target_y = rand_double(10.0, map_y_max - 10.0);
+        target_x = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
+        target_z = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
+        target_y = env_rand_double(10.0, 15.0);
 
         safe_target = 1;
         for (int i = 0; i < num_active_obstacles; i++) {

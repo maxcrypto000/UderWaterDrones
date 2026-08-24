@@ -225,8 +225,16 @@ def main():
             else:
                 ray_lines[i].set_color('cyan')
                 ray_lines[i].set_alpha(0.2)
+        
+        dist_str = ""
+        if 'x' in TARGET:
+            dx = TARGET['x'] - pos[0]
+            dy = TARGET['y'] - pos[1]
+            dz = TARGET['z'] - pos[2]
+            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+            dist_str = f" | Dist: {dist:.2f}m"
                 
-        ax.set_title(f"Simulation | T = {times[frame]:.2f}s | Env Bounds: {BOUNDS['x_max']:.0f}x{BOUNDS['y_max']:.0f}x{BOUNDS['z_max']:.0f}")
+        ax.set_title(f"Simulation | T = {times[frame]:.2f}s{dist_str} | Env Bounds: {BOUNDS['x_max']:.0f}x{BOUNDS['y_max']:.0f}x{BOUNDS['z_max']:.0f}")
         return [drone_marker] + ray_lines
 
     ani = FuncAnimation(fig, update, frames=range(0, len(xs), 4), interval=50, blit=False)

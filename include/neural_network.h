@@ -25,5 +25,9 @@ void nn_init_random(NeuralNetwork* nn);
 
 // Performs the feedforward pass: calculates outputs based on inputs
 void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], double outputs[NN_OUTPUT_SIZE]);
+// Salva i pesi della rete su un file binario
+void nn_save(NeuralNetwork* nn, const char* filename);
 
+// Carica i pesi della rete da un file binario (ritorna 1 se successo, 0 se errore)
+int nn_load(NeuralNetwork* nn, const char* filename);
 #endif

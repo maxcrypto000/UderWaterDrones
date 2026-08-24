@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fmiModelDescription
+  fmiVersion="2.0"
+  modelName="UnderwaterDronePhysics"
+  guid="{00a785b0-ed17-4d82-ab03-1ee03c1d9b9e}"
+  description=""
+  version=""
+  generationTool="OpenModelica Compiler OpenModelica v1.27.0 (64-bit)"
+  generationDateAndTime="2026-08-13T18:42:59Z"
+  variableNamingConvention="structured"
+  numberOfEventIndicators="0">
+  <ModelExchange
+    modelIdentifier="UnderwaterDronePhysics"
+    needsExecutionTool="false"
+    completedIntegratorStepNotNeeded="false"
+    canBeInstantiatedOnlyOncePerProcess="false"
+    canNotUseMemoryManagementFunctions="false"
+    canGetAndSetFMUstate="false"
+    canSerializeFMUstate="false"
+    providesDirectionalDerivative="false">
+    <SourceFiles>
+      <File name="UnderwaterDronePhysics.c" />
+      <File name="UnderwaterDronePhysics_01exo.c" />
+      <File name="UnderwaterDronePhysics_02nls.c" />
+      <File name="UnderwaterDronePhysics_03lsy.c" />
+      <File name="UnderwaterDronePhysics_04set.c" />
+      <File name="UnderwaterDronePhysics_05evt.c" />
+      <File name="UnderwaterDronePhysics_06inz.c" />
+      <File name="UnderwaterDronePhysics_07dly.c" />
+      <File name="UnderwaterDronePhysics_08bnd.c" />
+      <File name="UnderwaterDronePhysics_09alg.c" />
+      <File name="UnderwaterDronePhysics_10asr.c" />
+      <File name="UnderwaterDronePhysics_11mix.c" />
+      <File name="UnderwaterDronePhysics_12jac.c" />
+      <File name="UnderwaterDronePhysics_13opt.c" />
+      <File name="UnderwaterDronePhysics_14lnz.c" />
+      <File name="UnderwaterDronePhysics_15syn.c" />
+      <File name="UnderwaterDronePhysics_16dae.c" />
+      <File name="UnderwaterDronePhysics_17inl.c" />
+      <File name="UnderwaterDronePhysics_18spd.c" />
+      <File name="UnderwaterDronePhysics_FMU.c" />
+      <File name="UnderwaterDronePhysics_functions.c" />
+      <File name="UnderwaterDronePhysics_init_fmu.c" />
+      <File name="UnderwaterDronePhysics_records.c" />
+      <File name="fmi-export/fmu2_model_interface.c" />
+      <File name="fmi-export/fmu_read_flags.c" />
+      <File name="gc/memory_pool.c" />
+      <File name="gc/omc_gc.c" />
+      <File name="math-support/pivot.c" />
+      <File name="meta/meta_modelica_catch.c" />
+      <File name="simulation/arrayIndex.c" />
+      <File name="simulation/eval_dep.c" />
+      <File name="simulation/jacobian_util.c" />
+      <File name="simulation/omc_simulation_util.c" />
+      <File name="simulation/options.c" />
+      <File name="simulation/simulation_info_json.c" />
+      <File name="simulation/simulation_omc_assert.c" />
+      <File name="simulation/solver/delay.c" />
+      <File name="simulation/solver/discrete_changes.c" />
+      <File name="simulation/solver/initialization/initialization.c" />
+      <File name="simulation/solver/model_help.c" />
+      <File name="simulation/solver/omc_math.c" />
+      <File name="simulation/solver/spatialDistribution.c" />
+      <File name="simulation/solver/stateset.c" />
+      <File name="simulation/solver/synchronous.c" />
+      <File name="util/base_array.c" />
+      <File name="util/boolean_array.c" />
+      <File name="util/context.c" />
+      <File name="util/division.c" />
+      <File name="util/doubleEndedList.c" />
+      <File name="util/generic_array.c" />
+      <File name="util/index_spec.c" />
+      <File name="util/integer_array.c" />
+      <File name="util/list.c" />
+      <File name="util/modelica_string.c" />
+      <File name="util/modelica_string_lit.c" />
+      <File name="util/ModelicaUtilities.c" />
+      <File name="util/omc_error.c" />
+      <File name="util/omc_file.c" />
+      <File name="util/omc_init.c" />
+      <File name="util/omc_mmap.c" />
+      <File name="util/omc_msvc.c" />
+      <File name="util/omc_numbers.c" />
+      <File name="util/parallel_helper.c" />
+      <File name="util/rational.c" />
+      <File name="util/real_array.c" />
+      <File name="util/ringbuffer.c" />
+      <File name="util/simulation_options.c" />
+      <File name="util/string_array.c" />
+      <File name="util/utility.c" />
+      <File name="util/varinfo.c" />
+      <File name="external_solvers/dgemm.c" />
+      <File name="external_solvers/dgemv.c" />
+      <File name="external_solvers/dger.c" />
+      <File name="external_solvers/dgesv.c" />
+      <File name="external_solvers/dgetf2.c" />
+      <File name="external_solvers/dgetrf.c" />
+      <File name="external_solvers/dgetri.c" />
+      <File name="external_solvers/dgetrs.c" />
+      <File name="external_solvers/dlamch.c" />
+      <File name="external_solvers/dlaswp.c" />
+      <File name="external_solvers/dscal.c" />
+      <File name="external_solvers/dswap.c" />
+      <File name="external_solvers/dtrmm.c" />
+      <File name="external_solvers/dtrmv.c" />
+      <File name="external_solvers/dtrsm.c" />
+      <File name="external_solvers/dtrti2.c" />
+      <File name="external_solvers/dtrtri.c" />
+      <File name="external_solvers/exit_.c" />
+      <File name="external_solvers/F77_aloc.c" />
+      <File name="external_solvers/i_nint.c" />
+      <File name="external_solvers/idamax.c" />
+      <File name="external_solvers/ieeeck.c" />
+      <File name="external_solvers/ilaenv.c" />
+      <File name="external_solvers/iparmq.c" />
+      <File name="external_solvers/lsame.c" />
+      <File name="external_solvers/pow_di.c" />
+      <File name="external_solvers/s_cat.c" />
+      <File name="external_solvers/s_cmp.c" />
+      <File name="external_solvers/s_copy.c" />
+      <File name="external_solvers/xerbla.c" />
+      <File name="external_solvers/dogleg_.c" />
+      <File name="external_solvers/dpmpar_.c" />
+      <File name="external_solvers/enorm_.c" />
+      <File name="external_solvers/hybrj_.c" />
+      <File name="external_solvers/qform_.c" />
+      <File name="external_solvers/qrfac_.c" />
+      <File name="external_solvers/r1mpyq_.c" />
+      <File name="external_solvers/r1updt_.c" />
+      <File name="ModelicaExternalC/ModelicaIO.c" />
+      <File name="ModelicaExternalC/ModelicaMatIO.c" />
+      <File name="ModelicaExternalC/ModelicaStandardTables.c" />
+      <File name="ModelicaExternalC/ModelicaStandardTablesDummyUsertab.c" />
+      <File name="ModelicaExternalC/snprintf.c" />
+    </SourceFiles>
+  </ModelExchange>
+  <CoSimulation
+    modelIdentifier="UnderwaterDronePhysics"
+    needsExecutionTool="false"
+    canHandleVariableCommunicationStepSize="true"
+    canInterpolateInputs="true"
+    maxOutputDerivativeOrder="1"
+    canRunAsynchronuously = "false"
+    canBeInstantiatedOnlyOncePerProcess="false"
+    canNotUseMemoryManagementFunctions="false"
+    canGetAndSetFMUstate="false"
+    canSerializeFMUstate="false"
+    providesDirectionalDerivative="false">
+    <SourceFiles>
+      <File name="UnderwaterDronePhysics.c" />
+      <File name="UnderwaterDronePhysics_01exo.c" />
+      <File name="UnderwaterDronePhysics_02nls.c" />
+      <File name="UnderwaterDronePhysics_03lsy.c" />
+      <File name="UnderwaterDronePhysics_04set.c" />
+      <File name="UnderwaterDronePhysics_05evt.c" />
+      <File name="UnderwaterDronePhysics_06inz.c" />
+      <File name="UnderwaterDronePhysics_07dly.c" />
+      <File name="UnderwaterDronePhysics_08bnd.c" />
+      <File name="UnderwaterDronePhysics_09alg.c" />
+      <File name="UnderwaterDronePhysics_10asr.c" />
+      <File name="UnderwaterDronePhysics_11mix.c" />
+      <File name="UnderwaterDronePhysics_12jac.c" />
+      <File name="UnderwaterDronePhysics_13opt.c" />
+      <File name="UnderwaterDronePhysics_14lnz.c" />
+      <File name="UnderwaterDronePhysics_15syn.c" />
+      <File name="UnderwaterDronePhysics_16dae.c" />
+      <File name="UnderwaterDronePhysics_17inl.c" />
+      <File name="UnderwaterDronePhysics_18spd.c" />
+      <File name="UnderwaterDronePhysics_FMU.c" />
+      <File name="UnderwaterDronePhysics_functions.c" />
+      <File name="UnderwaterDronePhysics_init_fmu.c" />
+      <File name="UnderwaterDronePhysics_records.c" />
+      <File name="fmi-export/fmu2_model_interface.c" />
+      <File name="fmi-export/fmu_read_flags.c" />
+      <File name="gc/memory_pool.c" />
+      <File name="gc/omc_gc.c" />
+      <File name="math-support/pivot.c" />
+      <File name="meta/meta_modelica_catch.c" />
+      <File name="simulation/arrayIndex.c" />
+      <File name="simulation/eval_dep.c" />
+      <File name="simulation/jacobian_util.c" />
+      <File name="simulation/omc_simulation_util.c" />
+      <File name="simulation/options.c" />
+      <File name="simulation/simulation_info_json.c" />
+      <File name="simulation/simulation_omc_assert.c" />
+      <File name="simulation/solver/delay.c" />
+      <File name="simulation/solver/discrete_changes.c" />
+      <File name="simulation/solver/initialization/initialization.c" />
+      <File name="simulation/solver/model_help.c" />
+      <File name="simulation/solver/omc_math.c" />
+      <File name="simulation/solver/spatialDistribution.c" />
+      <File name="simulation/solver/stateset.c" />
+      <File name="simulation/solver/synchronous.c" />
+      <File name="util/base_array.c" />
+      <File name="util/boolean_array.c" />
+      <File name="util/context.c" />
+      <File name="util/division.c" />
+      <File name="util/doubleEndedList.c" />
+      <File name="util/generic_array.c" />
+      <File name="util/index_spec.c" />
+      <File name="util/integer_array.c" />
+      <File name="util/list.c" />
+      <File name="util/modelica_string.c" />
+      <File name="util/modelica_string_lit.c" />
+      <File name="util/ModelicaUtilities.c" />
+      <File name="util/omc_error.c" />
+      <File name="util/omc_file.c" />
+      <File name="util/omc_init.c" />
+      <File name="util/omc_mmap.c" />
+      <File name="util/omc_msvc.c" />
+      <File name="util/omc_numbers.c" />
+      <File name="util/parallel_helper.c" />
+      <File name="util/rational.c" />
+      <File name="util/real_array.c" />
+      <File name="util/ringbuffer.c" />
+      <File name="util/simulation_options.c" />
+      <File name="util/string_array.c" />
+      <File name="util/utility.c" />
+      <File name="util/varinfo.c" />
+      <File name="external_solvers/dgemm.c" />
+      <File name="external_solvers/dgemv.c" />
+      <File name="external_solvers/dger.c" />
+      <File name="external_solvers/dgesv.c" />
+      <File name="external_solvers/dgetf2.c" />
+      <File name="external_solvers/dgetrf.c" />
+      <File name="external_solvers/dgetri.c" />
+      <File name="external_solvers/dgetrs.c" />
+      <File name="external_solvers/dlamch.c" />
+      <File name="external_solvers/dlaswp.c" />
+      <File name="external_solvers/dscal.c" />
+      <File name="external_solvers/dswap.c" />
+      <File name="external_solvers/dtrmm.c" />
+      <File name="external_solvers/dtrmv.c" />
+      <File name="external_solvers/dtrsm.c" />
+      <File name="external_solvers/dtrti2.c" />
+      <File name="external_solvers/dtrtri.c" />
+      <File name="external_solvers/exit_.c" />
+      <File name="external_solvers/F77_aloc.c" />
+      <File name="external_solvers/i_nint.c" />
+      <File name="external_solvers/idamax.c" />
+      <File name="external_solvers/ieeeck.c" />
+      <File name="external_solvers/ilaenv.c" />
+      <File name="external_solvers/iparmq.c" />
+      <File name="external_solvers/lsame.c" />
+      <File name="external_solvers/pow_di.c" />
+      <File name="external_solvers/s_cat.c" />
+      <File name="external_solvers/s_cmp.c" />
+      <File name="external_solvers/s_copy.c" />
+      <File name="external_solvers/xerbla.c" />
+      <File name="external_solvers/dogleg_.c" />
+      <File name="external_solvers/dpmpar_.c" />
+      <File name="external_solvers/enorm_.c" />
+      <File name="external_solvers/hybrj_.c" />
+      <File name="external_solvers/qform_.c" />
+      <File name="external_solvers/qrfac_.c" />
+      <File name="external_solvers/r1mpyq_.c" />
+      <File name="external_solvers/r1updt_.c" />
+      <File name="ModelicaExternalC/ModelicaIO.c" />
+      <File name="ModelicaExternalC/ModelicaMatIO.c" />
+      <File name="ModelicaExternalC/ModelicaStandardTables.c" />
+      <File name="ModelicaExternalC/ModelicaStandardTablesDummyUsertab.c" />
+      <File name="ModelicaExternalC/snprintf.c" />
+    </SourceFiles>
+  </CoSimulation>
+  <LogCategories>
+    <Category name="logEvents" />
+    <Category name="logSingularLinearSystems" />
+    <Category name="logNonlinearSystems" />
+    <Category name="logDynamicStateSelection" />
+    <Category name="logStatusWarning" />
+    <Category name="logStatusDiscard" />
+    <Category name="logStatusError" />
+    <Category name="logStatusFatal" />
+    <Category name="logStatusPending" />
+    <Category name="logAll" />
+    <Category name="logFmi2Call" />
+  </LogCategories>
+  <DefaultExperiment startTime="0.0" stopTime="1.0" tolerance="1e-6" stepSize="0.002"/>
+  <ModelVariables>
+  <!-- Index of variable = "1" -->
+  <ScalarVariable
+    name="_D_outputAlias_vx"
+    valueReference="0"
+    initial="exact">
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "2" -->
+  <ScalarVariable
+    name="_D_outputAlias_vy"
+    valueReference="1"
+    initial="exact">
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "3" -->
+  <ScalarVariable
+    name="_D_outputAlias_vz"
+    valueReference="2"
+    initial="exact">
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "4" -->
+  <ScalarVariable
+    name="_D_outputAlias_x"
+    valueReference="3"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "5" -->
+  <ScalarVariable
+    name="_D_outputAlias_y"
+    valueReference="4"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "6" -->
+  <ScalarVariable
+    name="_D_outputAlias_z"
+    valueReference="5"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "7" -->
+  <ScalarVariable
+    name="der(_D_outputAlias_vx)"
+    valueReference="6"
+    >
+    <Real derivative="1"/>
+  </ScalarVariable>
+  <!-- Index of variable = "8" -->
+  <ScalarVariable
+    name="der(_D_outputAlias_vy)"
+    valueReference="7"
+    >
+    <Real derivative="2"/>
+  </ScalarVariable>
+  <!-- Index of variable = "9" -->
+  <ScalarVariable
+    name="der(_D_outputAlias_vz)"
+    valueReference="8"
+    >
+    <Real derivative="3"/>
+  </ScalarVariable>
+  <!-- Index of variable = "10" -->
+  <ScalarVariable
+    name="der(_D_outputAlias_x)"
+    valueReference="9"
+    >
+    <Real derivative="4"/>
+  </ScalarVariable>
+  <!-- Index of variable = "11" -->
+  <ScalarVariable
+    name="der(_D_outputAlias_y)"
+    valueReference="10"
+    >
+    <Real derivative="5"/>
+  </ScalarVariable>
+  <!-- Index of variable = "12" -->
+  <ScalarVariable
+    name="der(_D_outputAlias_z)"
+    valueReference="11"
+    >
+    <Real derivative="6"/>
+  </ScalarVariable>
+  <!-- Index of variable = "13" -->
+  <ScalarVariable
+    name="ux"
+    valueReference="12"
+    causality="input"
+    >
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "14" -->
+  <ScalarVariable
+    name="uy"
+    valueReference="13"
+    causality="input"
+    >
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "15" -->
+  <ScalarVariable
+    name="uz"
+    valueReference="14"
+    causality="input"
+    >
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "16" -->
+  <ScalarVariable
+    name="v_norm"
+    valueReference="15"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "17" -->
+  <ScalarVariable
+    name="vx"
+    valueReference="16"
+    causality="output"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "18" -->
+  <ScalarVariable
+    name="vy"
+    valueReference="17"
+    causality="output"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "19" -->
+  <ScalarVariable
+    name="vz"
+    valueReference="18"
+    causality="output"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "20" -->
+  <ScalarVariable
+    name="x"
+    valueReference="19"
+    causality="output"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "21" -->
+  <ScalarVariable
+    name="y"
+    valueReference="20"
+    causality="output"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "22" -->
+  <ScalarVariable
+    name="z"
+    valueReference="21"
+    causality="output"
+    >
+    <Real/>
+  </ScalarVariable>
+  <!-- Index of variable = "23" -->
+  <ScalarVariable
+    name="kd"
+    valueReference="22"
+    description="Coefficiente di attrito quadratico dell'acqua"
+    variability="fixed"
+    causality="parameter"
+    >
+    <Real start="5.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "24" -->
+  <ScalarVariable
+    name="m"
+    valueReference="23"
+    description="Massa (kg)"
+    variability="fixed"
+    causality="parameter"
+    >
+    <Real start="15.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "25" -->
+  <ScalarVariable
+    name="start_x"
+    valueReference="24"
+    variability="fixed"
+    causality="parameter"
+    >
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "26" -->
+  <ScalarVariable
+    name="start_y"
+    valueReference="25"
+    variability="fixed"
+    causality="parameter"
+    >
+    <Real start="0.0"/>
+  </ScalarVariable>
+  <!-- Index of variable = "27" -->
+  <ScalarVariable
+    name="start_z"
+    valueReference="26"
+    variability="fixed"
+    causality="parameter"
+    >
+    <Real start="0.0"/>
+  </ScalarVariable>
+  </ModelVariables>
+  <ModelStructure>
+    <Outputs>
+      <Unknown index="17" dependencies="1" dependenciesKind="dependent" />
+      <Unknown index="18" dependencies="2" dependenciesKind="dependent" />
+      <Unknown index="19" dependencies="3" dependenciesKind="dependent" />
+      <Unknown index="20" dependencies="4" dependenciesKind="dependent" />
+      <Unknown index="21" dependencies="5" dependenciesKind="dependent" />
+      <Unknown index="22" dependencies="6" dependenciesKind="dependent" />
+    </Outputs>
+    <Derivatives>
+      <Unknown index="7" dependencies="1 2 3 13" dependenciesKind="dependent dependent dependent dependent" />
+      <Unknown index="8" dependencies="1 2 3 14" dependenciesKind="dependent dependent dependent dependent" />
+      <Unknown index="9" dependencies="1 2 3 15" dependenciesKind="dependent dependent dependent dependent" />
+      <Unknown index="10" dependencies="1" dependenciesKind="dependent" />
+      <Unknown index="11" dependencies="2" dependenciesKind="dependent" />
+      <Unknown index="12" dependencies="3" dependenciesKind="dependent" />
+    </Derivatives>
+    <InitialUnknowns>
+      <Unknown index="4" dependencies="25" dependenciesKind="dependent" />
+      <Unknown index="5" dependencies="26" dependenciesKind="dependent" />
+      <Unknown index="6" dependencies="27" dependenciesKind="dependent" />
+      <Unknown index="7" dependencies="1 2 3 13 23 24" dependenciesKind="dependent dependent dependent dependent dependent dependent" />
+      <Unknown index="8" dependencies="1 2 3 14 23 24" dependenciesKind="dependent dependent dependent dependent dependent dependent" />
+      <Unknown index="9" dependencies="1 2 3 15 23 24" dependenciesKind="dependent dependent dependent dependent dependent dependent" />
+      <Unknown index="10" dependencies="1" dependenciesKind="dependent" />
+      <Unknown index="11" dependencies="2" dependenciesKind="dependent" />
+      <Unknown index="12" dependencies="3" dependenciesKind="dependent" />
+      <Unknown index="17" dependencies="1" dependenciesKind="dependent" />
+      <Unknown index="18" dependencies="2" dependenciesKind="dependent" />
+      <Unknown index="19" dependencies="3" dependenciesKind="dependent" />
+      <Unknown index="20" dependencies="25" dependenciesKind="dependent" />
+      <Unknown index="21" dependencies="26" dependenciesKind="dependent" />
+      <Unknown index="22" dependencies="27" dependenciesKind="dependent" />
+    </InitialUnknowns>
+  </ModelStructure>
+</fmiModelDescription>
