@@ -142,7 +142,7 @@ static double run_episode(fmi2_import_t* fmu, double start_x, double start_y, do
         }
 
         if (current_distance < 5.0) {
-            printf("VICTORY!\n");
+            //printf("VICTORY!\n");
             fitness += 1000.0 + (t_end - current_time) * 50.0; // Victory + Time efficiency bonus
             break;
         }
@@ -227,8 +227,8 @@ void es_train(fmi2_import_t* fmu) {
             
             // Monte Carlo evaluation (M simulations)
             for (int m = 0; m < MONTECARLO_SAMPLES; m++) {
-                unsigned int env_seed = 42 + m ;
-                 double start_x, start_y, start_z;
+                unsigned int env_seed = 42 + (gen * MONTECARLO_SAMPLES) + m;
+                double start_x, start_y, start_z;
                 
                 // 1. Generate random environment
                 generate_random_environment(env_seed, &start_x, &start_y, &start_z);
@@ -341,7 +341,7 @@ void es_test(fmi2_import_t* fmu, const char* model_filename) {
 
     // 2. Generates a completely new map to test generalization
     // Using the current time as seed guarantees a new scenario every time
-    unsigned int test_seed = 42; //(unsigned int)time(NULL); 
+    unsigned int test_seed = 67; //(unsigned int)time(NULL); 
     double start_x, start_y, start_z;
     
     generate_random_environment(test_seed, &start_x, &start_y, &start_z);
