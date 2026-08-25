@@ -16,7 +16,7 @@
 #define GENERATIONS 1000
 
 // Number of different environments each neural network is evaluated on (Monte Carlo)
-#define MONTECARLO_SAMPLES 3
+#define MONTECARLO_SAMPLES 5
 
 
 // Standard deviation (Sigma) for extracting Gaussian noise.
