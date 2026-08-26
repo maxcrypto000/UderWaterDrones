@@ -1,0 +1,85 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+
+\title{Relazione sul Sistema di Controllo Neurale per Drone Sottomarino}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introduzione}
+Il progetto consiste nello sviluppo e addestramento di un sistema di controllo basato su Reti Neurali per un drone sottomarino. Il drone si muove all'interno di un ambiente tridimensionale simulato tramite un FMU (Functional Mock-up Unit), che modella la fisica del veicolo, dell'acqua e delle collisioni.
+L'obiettivo del drone è navigare in modo autonomo dall'area di spawn verso un bersaglio (target) generato casualmente, schivando ostacoli (montagne sottomarine) disposti proceduralmente nella mappa.
+
+\section{Architettura del Sistema}
+Il sistema è composto da due elementi principali:
+\begin{itemize}
+    \textbf{Ambiente (Environment) e Fisica (FMU):} L'ambiente genera proceduralmente i confini della mappa, la posizione degli ostacoli sottomarini (sfere o cilindri) e del target. La fisica del drone è delegata allo standard FMI/FMU, che calcola cinematiche e dinamiche.
+    \item \textbf{Controller (Rete Neurale):} Una rete neurale feedforward agisce da "cervello" del drone. Riceve in input i dati dei sensori e produce in output i comandi per i propulsori.
+\end{itemize}
+
+\subsection{Sensori (Input della Rete)}
+La rete neurale percepisce il mondo circostante attraverso un array di input, tra cui:
+\begin{itemize}
+    \item \textbf{Lidar 3D:} Un set di raggi (rays) proiettati uniformemente (es. distribuzione tramite sfera di Fibonacci) attorno al drone. Ogni raggio restituisce la distanza dal primo ostacolo intersecato, normalizzata tra 0 e 1.
+    \item \textbf{Vettore Relativo al Target:} La distanza relativa su tre assi ($dx, dy, dz$) tra il drone e il bersaglio, normalizzata rispetto alla grandezza della mappa per garantire invarianza traslazionale.
+\end{itemize}
+
+\subsection{Attuatori (Output della Rete)}
+La rete produce tre valori in output compresi tra -1 e 1 (grazie a una funzione di attivazione \textit{tanh}). Questi valori vengono moltiplicati per la spinta massima (Max Thrust) e convertiti in forze fisiche (Newton) applicate lungo gli assi X, Y e Z del drone.
+
+\section{Addestramento: Evolutionary Strategy (ES)}
+Poiché la simulazione fisica (FMU) non è differenziabile, non è possibile usare la backpropagation classica. L'addestramento sfrutta quindi una \textbf{Evolutionary Strategy} (in particolare la variante proposta da OpenAI), un algoritmo di ottimizzazione "black-box" altamente scalabile.
+
+\subsection{Popolazione e Cloni}
+L'algoritmo mantiene un vettore di pesi "Master" ($\theta$). Ad ogni \textit{generazione}, vengono creati $N$ cloni (la \textit{popolazione}). Ogni clone è una copia del Master perturbata aggiungendo del rumore gaussiano:
+\begin{equation}
+    \theta_i = \theta + \sigma \epsilon_i \quad \text{con } \epsilon_i \sim \mathcal{N}(0, I)
+\end{equation}
+dove $\sigma$ (Sigma) è la deviazione standard che determina quanto il clone si discosta dal Master.
+
+\subsection{Domain Randomization e Monte Carlo con Seed}
+Per garantire che il drone impari una \textit{policy} reattiva e generale (usare il Lidar) e non impari a memoria una specifica mappa (overfitting), viene impiegata una forte \textbf{Domain Randomization}.
+Ogni clone viene valutato lanciando $M$ simulazioni (Monte Carlo Samples). Il punteggio finale del clone è la media delle $M$ simulazioni.
+Per garantire equità nella valutazione (fairness), \textbf{tutti i cloni di una singola generazione affrontano le stesse identiche mappe}. Questo è realizzato governando il generatore di numeri casuali (RNG) isolato dell'ambiente tramite un seed specifico:
+\begin{equation}
+    \text{env\_seed} = 42 + (\text{gen} \times M) + m
+\end{equation}
+dove $\text{gen}$ è la generazione corrente e $m \in [0, M-1]$ è l'indice della simulazione Monte Carlo. 
+Poiché il seed dipende da $\text{gen}$, alla generazione successiva verranno estratte mappe \textit{completamente nuove}, forzando la rete a generalizzare.
+
+\subsection{Aggiornamento dei Pesi (Gradient Update)}
+Terminata la valutazione degli $N$ cloni, i punteggi (fitness) vengono normalizzati (Z-score). L'algoritmo stima il gradiente calcolando una media pesata delle direzioni di rumore $\epsilon_i$, dando peso maggiore ai cloni che hanno ottenuto le fitness migliori. Infine, i pesi Master vengono aggiornati:
+\begin{equation}
+    \theta_{t+1} = \theta_t + \alpha \frac{1}{N \sigma} \sum_{i=1}^{N} F_i \epsilon_i
+\end{equation}
+dove $\alpha$ è il \textit{Learning Rate} e $F_i$ è lo Z-score della fitness del clone $i$-esimo.
+
+\section{La Funzione di Reward (Fitness)}
+La funzione di fitness quantifica la bontà del comportamento del clone e modella (shaping) le priorità desiderate. È composta dai seguenti termini:
+\begin{itemize}
+    \item \textbf{Reward per Progresso (Progress Reward):} Viene assegnato un punteggio positivo per ogni metro guadagnato verso il target (e una penalità per l'allontanamento).
+    $$ r_{progress} = (d_{t-1} - d_{t}) \times W_{progress} $$
+    \item \textbf{Penalità per lo Sforzo (Effort Penalty):} Per incoraggiare un volo fluido e scoraggiare vibrazioni o accelerazioni eccessive a vuoto, viene sottratta una frazione del quadrato dell'output neurale.
+    \item \textbf{Penalità Collisione (Terminal Crash):} Se il drone tocca un ostacolo o esce dai bordi della mappa, l'episodio termina immediatamente e si riceve una pesante penalità fissa (es. $-500$).
+    \item \textbf{Premio Vittoria (Terminal Victory):} Se la distanza dal target scende sotto i 5 metri, l'episodio è considerato superato. Viene fornito un bonus ingente (es. $+1000$) e un bonus aggiuntivo proporzionale al tempo rimanente per favorire risoluzioni rapide.
+\end{itemize}
+
+\section{Fase di Test (Deployment)}
+Una volta terminate le generazioni (o al raggiungimento di una fitness media stabile su più mappe procedurali), l'addestramento viene interrotto (Early Stopping o termine prefissato) e il vettore Master $\theta$ viene salvato (es. \texttt{best\_model.bin}).
+Nella fase di test, il drone utilizza esclusivamente il file Master senza aggiungere alcun rumore gaussiano. Viene rilasciato in mappe mai viste prima generate con seed casuali (es. legati all'orario di sistema \texttt{time(NULL)}) e naviga determinando gli attuatori puramente in base all'inferenza istantanea dei propri input Lidar.
+
+\end{document}

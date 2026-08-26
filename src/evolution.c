@@ -41,145 +41,144 @@ static double randn(void) {
 // SIMULATION ENGINE AND FITNESS FUNCTION
 // ============================================================================
 
-// Executes a single simulation episode for a specific Neural Network.
-// Returns the accumulated Fitness score based on Dense Rewards.
-static double run_episode(fmi2_import_t* fmu, double start_x, double start_y, double start_z, NeuralNetwork* nn, FILE* csv_file) {
+// Executes a single simulation episode for a specific Neural Network across multiple drones.
+static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES], double start_y[N_DRONES], double start_z[N_DRONES], NeuralNetwork* nn, FILE* csv_file) {
     
     double t_start = 0.0;
-    double t_end = 60.0;  // The episode lasts a maximum of 20 virtual seconds
+    double t_end = 60.0;  // The episode lasts a maximum of 60 virtual seconds
     double step_size = 0.05; // Solver resolution: 50 milliseconds
     
-    // Initializes the experiment setup (start and end time)
-    fmi2_import_setup_experiment(fmu, fmi2_true, 1e-4, t_start, fmi2_true, t_end);
+    int active[N_DRONES];
+    double fitnesses[N_DRONES];
+    double previous_distances[N_DRONES];
+    double current_x[N_DRONES];
+    double current_y[N_DRONES];
+    double current_z[N_DRONES];
 
-    // SAFE SPAWN INJECTION: Modifies the initial coordinates of the FMU 
-    // bypassing the model defaults, ensuring Domain Randomization.
     fmi2_value_reference_t vr_starts[3] = { VR_START_X, VR_START_Y, VR_START_Z };
-    double start_vals[3] = { start_x, start_y, start_z };
-    fmi2_import_set_real(fmu, vr_starts, 3, start_vals);
-
-    // Physically applies the start values, initializing the equations of motion
-    fmi2_import_enter_initialization_mode(fmu);
-    fmi2_import_exit_initialization_mode(fmu);
-
     fmi2_value_reference_t vr_inputs[3] = { VR_UX, VR_UY, VR_UZ };
     fmi2_value_reference_t vr_outputs[4] = { VR_X, VR_Y, VR_Z, VR_VX };
     
-    double input_values[3] = { 0.0, 0.0, 0.0 }; 
-    double output_values[4] = { 0.0, 0.0, 0.0, 0.0 };
+    for (int d = 0; d < N_DRONES; d++) {
+        fmi2_import_setup_experiment(fmus[d], fmi2_true, 1e-4, t_start, fmi2_true, t_end);
+        
+        double start_vals[3] = { start_x[d], start_y[d], start_z[d] };
+        fmi2_import_set_real(fmus[d], vr_starts, 3, start_vals);
+        fmi2_import_enter_initialization_mode(fmus[d]);
+        fmi2_import_exit_initialization_mode(fmus[d]);
+        
+        active[d] = 1;
+        fitnesses[d] = 0.0;
+        
+        double dx = target_x[d] - start_x[d];
+        double dy = target_y[d] - start_y[d];
+        double dz = target_z[d] - start_z[d];
+        previous_distances[d] = sqrt(dx*dx + dy*dy + dz*dz);
+        current_x[d] = start_x[d];
+        current_y[d] = start_y[d];
+        current_z[d] = start_z[d];
+    }
     
-    double lidar_distances[NUM_RAYS];
-    double nn_inputs[NN_INPUT_SIZE];
-    double nn_outputs[NN_OUTPUT_SIZE];
-
     double current_time = t_start;
-    double fitness = 0.0;
     
-    // Initialize the distance to track step-by-step progress
-    double dx = target_x - start_x;
-    double dy = target_y - start_y;
-    double dz = target_z - start_z;
-    double previous_distance = sqrt(dx*dx + dy*dy + dz*dz);
-
-    // PHYSICS LOOP: Runs in steps of 0.05s until the end of the episode
     while (current_time < t_end) {
+        int any_active = 0;
         
-        // 1. Reads the current position (X, Y, Z) from the solver
-        fmi2_import_get_real(fmu, vr_outputs, 4, output_values);
-        double current_x = output_values[0];
-        double current_y = output_values[1];
-        double current_z = output_values[2];
-
-        // Writes to file for offline Python visualization (if enabled)
+        // 1. Read Positions
+        for (int d = 0; d < N_DRONES; d++) {
+            if (!active[d]) continue;
+            any_active = 1;
+            
+            double output_values[4];
+            fmi2_import_get_real(fmus[d], vr_outputs, 4, output_values);
+            current_x[d] = output_values[0];
+            current_y[d] = output_values[1];
+            current_z[d] = output_values[2];
+        }
+        
+        if (!any_active) break;
+        
         if (csv_file != NULL) {
-            fprintf(csv_file, "%.3f,%.3f,%.3f,%.3f\n", current_time, current_x, current_y, current_z);
-        }
-
-        // 2. Calculates the intersections of the Lidar rays with the random obstacles
-        compute_lidar_rays(current_x, current_y, current_z, lidar_distances);
-
-        int collision = 0;
-        // Populates the neural input and normalizes the Lidar distances between 0.0 and 1.0
-        for (int i = 0; i < NUM_RAYS; i++) {
-            nn_inputs[i] = lidar_distances[i] / MAX_LIDAR_RANGE; 
-            if (lidar_distances[i] <= 0.5) { 
-                collision = 1; // Critical compenetration detected (Crash)
+            fprintf(csv_file, "%.3f", current_time);
+            for (int d = 0; d < N_DRONES; d++) {
+                fprintf(csv_file, ",%.3f,%.3f,%.3f", current_x[d], current_y[d], current_z[d]);
             }
+            fprintf(csv_file, "\n");
         }
         
-        // Calculate the new distance from the target
-        dx = target_x - current_x;
-        dy = target_y - current_y;
-        dz = target_z - current_z;
-        double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
-
-        // =========================================================
-        // CONTINUOUS REWARD SHAPING
-        // =========================================================
-        
-        // A. Progress Reward (Breadcrumbs)
-        // If previous > current, the drone is getting closer (positive value).
-        // If it flies away, progress is negative, punishing bad routes immediately.
-        double progress = previous_distance - current_distance;
-        fitness += progress * 200.0; 
-        //printf("progress: %f\n", progress);
-        
-        previous_distance = current_distance; // Update for the next step
-
-        // B. Control Cost (Energy Efficiency)
-        // Small penalty based on the extreme use of the engines (tanh outputs squared).
-        // Encourages smooth trajectories over erratic, full-throttle maneuvers.
-        double effort = (nn_outputs[0]*nn_outputs[0] + nn_outputs[1]*nn_outputs[1] + nn_outputs[2]*nn_outputs[2]);
-        fitness -= effort * 0.01; 
-        
-        // =========================================================
-
-        // 3. Cumulative Terminal States (Added/Subtracted, not overwritten)
-        if (collision) {
-            //printf("CRASHED!\n");
-            fitness -= 500.0; // Severe final penalty for crashing
-            break; 
+        // 2. Compute Lidar and Process Neural Nets
+        for (int d = 0; d < N_DRONES; d++) {
+            if (!active[d]) continue;
+            
+            double lidar_distances[NUM_RAYS];
+            compute_lidar_rays(d, current_x[d], current_y[d], current_z[d], current_x, current_y, current_z, active, lidar_distances);
+            
+            int collision = 0;
+            double nn_inputs[NN_INPUT_SIZE];
+            double nn_outputs[NN_OUTPUT_SIZE];
+            
+            for (int i = 0; i < NUM_RAYS; i++) {
+                nn_inputs[i] = lidar_distances[i] / MAX_LIDAR_RANGE;
+                if (lidar_distances[i] <= 0.5) collision = 1; 
+            }
+            
+            double dx = target_x[d] - current_x[d];
+            double dy = target_y[d] - current_y[d];
+            double dz = target_z[d] - current_z[d];
+            double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
+            
+            double progress = previous_distances[d] - current_distance;
+            fitnesses[d] += progress * 200.0;
+            previous_distances[d] = current_distance;
+            
+            if (collision) {
+                fitnesses[d] -= 500.0;
+                active[d] = 0;
+                continue;
+            }
+            
+            if (current_distance < 5.0) {
+                fitnesses[d] += 1000.0 + (t_end - current_time) * 100.0;
+                active[d] = 0;
+                continue;
+            }
+            
+            nn_inputs[64] = dx / 100.0;
+            nn_inputs[65] = dy / 100.0;
+            nn_inputs[66] = dz / 100.0;
+            
+            nn_feedforward(nn, nn_inputs, nn_outputs);
+            
+            double effort = (nn_outputs[0]*nn_outputs[0] + nn_outputs[1]*nn_outputs[1] + nn_outputs[2]*nn_outputs[2]);
+            fitnesses[d] -= effort * 0.01;
+            
+            double input_values[3];
+            input_values[0] = nn_outputs[0] * MAX_THRUST;
+            input_values[1] = nn_outputs[1] * MAX_THRUST;
+            input_values[2] = nn_outputs[2] * MAX_THRUST;
+            
+            fmi2_import_set_real(fmus[d], vr_inputs, 3, input_values);
+            fmi2_import_do_step(fmus[d], current_time, step_size, fmi2_true);
         }
-
-        if (current_distance < 5.0) {
-            //printf("VICTORY!\n");
-            fitness += 1000.0 + (t_end - current_time) * 100.0; // Victory + Time efficiency bonus
-            break;
-        }
-
-        // 4. Prepares Target Vector Inputs
-        // Translational invariance: passing the scaled relative distance instead of absolute coordinates
-        nn_inputs[64] = dx / 100.0;
-        nn_inputs[65] = dy / 100.0;
-        nn_inputs[66] = dz / 100.0;
-
-        // 5. Inference: The Network "thinks" and produces the output
-        nn_feedforward(nn, nn_inputs, nn_outputs);
-
-        // 6. Actuation: Neural mapping (from -1 to 1) into physical Newtons
-        input_values[0] = nn_outputs[0] * MAX_THRUST;
-        input_values[1] = nn_outputs[1] * MAX_THRUST;
-        input_values[2] = nn_outputs[2] * MAX_THRUST;
-
-        // Injects the commands into the OpenModelica thrusters and advances time
-        fmi2_import_set_real(fmu, vr_inputs, 3, input_values);
-        fmi2_import_do_step(fmu, current_time, step_size, fmi2_true);
         
         current_time += step_size;
     }
     
-    // Fast reset of the FMU to prepare it for the next episode (saves CPU)
-    fmi2_import_terminate(fmu);
-    fmi2_import_reset(fmu); 
-
-    return fitness; 
+    double total_fitness = 0.0;
+    for (int d = 0; d < N_DRONES; d++) {
+        fmi2_import_terminate(fmus[d]);
+        fmi2_import_reset(fmus[d]);
+        total_fitness += fitnesses[d];
+    }
+    
+    return total_fitness; 
 }
 
 // ============================================================================
 // OPTIMIZATION ALGORITHM (OpenAI ES - Algorithm 1)
 // ============================================================================
 
-void es_train(fmi2_import_t* fmu) {
+void es_train(fmi2_import_t* fmus[N_DRONES]) {
     
     // Initializes the Original Network (Master) with random weights
     NeuralNetwork base_nn;
@@ -228,10 +227,10 @@ void es_train(fmi2_import_t* fmu) {
             // Monte Carlo evaluation (M simulations)
             for (int m = 0; m < MONTECARLO_SAMPLES; m++) {
                 unsigned int env_seed = 42 + (gen * MONTECARLO_SAMPLES) + m;
-                double start_x, start_y, start_z;
+                double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
                 
                 // 1. Generate random environment
-                generate_random_environment(env_seed, &start_x, &start_y, &start_z);
+                generate_random_environment(env_seed, start_x, start_y, start_z);
                 
                 // Export only the first environment for visualization
                 if (p == 0 && m == 0) {
@@ -239,7 +238,7 @@ void es_train(fmi2_import_t* fmu) {
                 }
 
                 // 2 & 3. Send clone into the simulator and accumulate fitness
-                clone_total_fitness += run_episode(fmu, start_x, start_y, start_z, &perturbed_nns[p], NULL);
+                clone_total_fitness += run_episode(fmus, start_x, start_y, start_z, &perturbed_nns[p], NULL);
             }
             
             // 4. Calculate the average reward over M simulations
@@ -300,13 +299,15 @@ void es_train(fmi2_import_t* fmu) {
         // Performs an extra rollout with the MASTER network (no noise) to record what it has learned.
         
         unsigned int telemetry_seed = 42 ; 
-        double tel_start_x, tel_start_y, tel_start_z;
-        generate_random_environment(telemetry_seed, &tel_start_x, &tel_start_y, &tel_start_z);
+        double tel_start_x[N_DRONES], tel_start_y[N_DRONES], tel_start_z[N_DRONES];
+        generate_random_environment(telemetry_seed, tel_start_x, tel_start_y, tel_start_z);
         
         FILE* telemetry_csv = fopen("telemetry.csv", "w");
         if (telemetry_csv != NULL) {
-            fprintf(telemetry_csv, "time,x,y,z\n"); 
-            run_episode(fmu, tel_start_x, tel_start_y, tel_start_z, &base_nn, telemetry_csv);
+            fprintf(telemetry_csv, "time"); 
+            for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d", d, d, d);
+            fprintf(telemetry_csv, "\n");
+            run_episode(fmus, tel_start_x, tel_start_y, tel_start_z, &base_nn, telemetry_csv);
             fclose(telemetry_csv);
         }
     }
@@ -328,7 +329,7 @@ void es_train(fmi2_import_t* fmu) {
 // TESTING FUNCTION (Inference Only)
 // ============================================================================
 
-void es_test(fmi2_import_t* fmu, const char* model_filename) {
+void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
     NeuralNetwork nn;
     
     // 1. Loads the pre-trained weights from the binary file
@@ -341,22 +342,26 @@ void es_test(fmi2_import_t* fmu, const char* model_filename) {
 
     // 2. Generates a completely new map to test generalization
     // Using the current time as seed guarantees a new scenario every time
-    unsigned int test_seed = 1237; //(unsigned int)time(NULL); 
-    double start_x, start_y, start_z;
+    unsigned int test_seed = 12; //(unsigned int)time(NULL); 
+    double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
-    generate_random_environment(test_seed, &start_x, &start_y, &start_z);
+    generate_random_environment(test_seed, start_x, start_y, start_z);
     export_environment("environment.csv"); // Exports for Python visualization
 
     printf("Test Map Generated (Seed: %u)\n", test_seed);
-    printf("Target coordinates: X=%.2f, Y=%.2f, Z=%.2f\n", target_x, target_y, target_z);
+    for (int d = 0; d < N_DRONES; d++) {
+        printf("Drone %d Target: X=%.2f, Y=%.2f, Z=%.2f\n", d, target_x[d], target_y[d], target_z[d]);
+    }
 
     // 3. Executes a single rollout and records the trajectory
     FILE* telemetry_csv = fopen("telemetry.csv", "w");
     if (telemetry_csv != NULL) {
-        fprintf(telemetry_csv, "time,x,y,z\n"); 
+        fprintf(telemetry_csv, "time"); 
+        for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d", d, d, d);
+        fprintf(telemetry_csv, "\n");
         
         printf("\n>>> STARTING INFERENCE FLIGHT...\n");
-        double final_fitness = run_episode(fmu, start_x, start_y, start_z, &nn, telemetry_csv);
+        double final_fitness = run_episode(fmus, start_x, start_y, start_z, &nn, telemetry_csv);
         
         fclose(telemetry_csv);
         printf(">>> FLIGHT COMPLETED. Final Fitness: %.2f\n", final_fitness);

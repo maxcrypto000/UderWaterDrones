@@ -34,30 +34,42 @@ int main(int argc, char* argv[]) {
     const char* tmp_dir = fmi_import_mk_temp_dir(&callbacks, ".", "fmu_tmp_");
     
     fmi_import_get_fmi_version(context, fmu_path, tmp_dir);
-    fmi2_import_t* fmu = fmi2_import_parse_xml(context, tmp_dir, 0);
+    
+    fmi2_import_t* fmus[N_DRONES];
+    fmi2_callback_functions_t* fmi2Callbacks_array[N_DRONES];
 
-    fmi2_callback_functions_t fmi2Callbacks;
-    fmi2Callbacks.logger = fmi2_log_forwarding;
-    fmi2Callbacks.allocateMemory = calloc;
-    fmi2Callbacks.freeMemory = free;
-    fmi2Callbacks.componentEnvironment = fmu;
+    for (int i = 0; i < N_DRONES; i++) {
+        fmus[i] = fmi2_import_parse_xml(context, tmp_dir, 0);
 
-    fmi2_import_create_dllfmu(fmu, fmi2_fmu_kind_cs, &fmi2Callbacks);
-    fmi2_import_instantiate(fmu, "DroneTest", fmi2_cosimulation, NULL, fmi2_false);
+        fmi2Callbacks_array[i] = malloc(sizeof(fmi2_callback_functions_t));
+        fmi2Callbacks_array[i]->logger = fmi2_log_forwarding;
+        fmi2Callbacks_array[i]->allocateMemory = calloc;
+        fmi2Callbacks_array[i]->freeMemory = free;
+        fmi2Callbacks_array[i]->componentEnvironment = fmus[i];
+
+        fmi2_import_create_dllfmu(fmus[i], fmi2_fmu_kind_cs, fmi2Callbacks_array[i]);
+        
+        char instance_name[32];
+        sprintf(instance_name, "Drone_%d", i);
+        fmi2_import_instantiate(fmus[i], instance_name, fmi2_cosimulation, NULL, fmi2_false);
+    }
 
     // --- EXECUTION BRANCH ---
     if (run_test) {
         // Runs the pre-trained neural network on a random map
-        es_test(fmu, "best_model.bin");
+        es_test(fmus, "best_model.bin");
     } else {
-        // Starts the 100-generation Evolution Strategy
-        es_train(fmu);
+        // Starts the 1000-generation Evolution Strategy
+        es_train(fmus);
     }
 
     // Memory Cleanup
-    fmi2_import_free_instance(fmu);
-    fmi2_import_destroy_dllfmu(fmu);
-    fmi2_import_free(fmu);
+    for (int i = 0; i < N_DRONES; i++) {
+        fmi2_import_free_instance(fmus[i]);
+        fmi2_import_destroy_dllfmu(fmus[i]);
+        fmi2_import_free(fmus[i]);
+        free(fmi2Callbacks_array[i]);
+    }
     fmi_import_free_context(context);
     fmi_import_rmdir(&callbacks, tmp_dir);
     callbacks.free((void*)tmp_dir);

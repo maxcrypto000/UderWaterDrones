@@ -3,6 +3,7 @@
 
 #include <fmilib.h>
 #include "neural_network.h"
+#include "environment.h"
 
 // ============================================================================
 // EVOLUTION STRATEGY HYPERPARAMETERS (Algorithm 1 - OpenAI)
@@ -34,12 +35,9 @@
 // ============================================================================
 
 // Starts the Evolution Strategy generational loop.
-// Takes as input the pointer to the FMU already instantiated in main.
-void es_train(fmi2_import_t* fmu);
-
-
-
+// Takes as input the array of instantiated FMUs.
+void es_train(fmi2_import_t* fmus[N_DRONES]);
 
 // Testa una Rete Neurale precedentemente addestrata
-void es_test(fmi2_import_t* fmu, const char* model_filename);
+void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename);
 #endif

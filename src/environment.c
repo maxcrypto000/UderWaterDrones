@@ -18,7 +18,7 @@ double map_z_max =  50.0;
 int num_active_obstacles = 0;
 Obstacle3D obstacles[MAX_OBSTACLES];
 static LidarRay rays[NUM_RAYS];
-double target_x = 0.0, target_y = 0.0, target_z = 0.0;
+double target_x[N_DRONES], target_y[N_DRONES], target_z[N_DRONES];
 static unsigned int env_rand_state = 1;
 
 static int env_rand(void) {
@@ -31,7 +31,7 @@ static double env_rand_double(double min, double max) {
     return min + ((double)env_rand() / 32767.0) * (max - min);
 }
 
-void generate_random_environment(unsigned int seed, double* out_startX, double* out_startY, double* out_startZ) {
+void generate_random_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
     // 1. Lock the Random Number Generator to the specific Generation Seed
     env_rand_state = seed;
 
@@ -54,44 +54,62 @@ void generate_random_environment(unsigned int seed, double* out_startX, double* 
         obstacles[i].y = 0.0; // Grounded on the sea floor
     }
 
-    // 4. Find a Safe Spawn Position
-    int safe_spawn = 0;
-    while (!safe_spawn) {
-        *out_startX = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
-        *out_startZ = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
-        *out_startY = env_rand_double(10.0, map_y_max - 10.0); // Never spawn exactly on the floor
+    // 4. Find Safe Spawn Positions
+    for (int d = 0; d < N_DRONES; d++) {
+        int safe_spawn = 0;
+        while (!safe_spawn) {
+            out_startX[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
+            out_startZ[d] = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
+            out_startY[d] = env_rand_double(10.0, map_y_max - 10.0);
 
-        safe_spawn = 1;
-        // Verify collision against all active mountains
-        for (int i = 0; i < num_active_obstacles; i++) {
-            double dx = *out_startX - obstacles[i].x;
-            double dy = *out_startY - obstacles[i].y;
-            double dz = *out_startZ - obstacles[i].z;
+            safe_spawn = 1;
+            // Verify collision against all active mountains
+            for (int i = 0; i < num_active_obstacles; i++) {
+                double dx = out_startX[d] - obstacles[i].x;
+                double dy = out_startY[d] - obstacles[i].y;
+                double dz = out_startZ[d] - obstacles[i].z;
+                
+                double safe_distance = obstacles[i].radius + 5.0;
+                if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                    safe_spawn = 0; 
+                    break;
+                }
+            }
             
-            // Add a 5.0 meter safety buffer around the mountain
-            double safe_distance = obstacles[i].radius + 5.0;
-            if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
-                safe_spawn = 0; // Invalid spawn, try again
-                break;
+            // Verify distance from other already spawned drones
+            if (safe_spawn) {
+                for (int other = 0; other < d; other++) {
+                    double dx = out_startX[d] - out_startX[other];
+                    double dy = out_startY[d] - out_startY[other];
+                    double dz = out_startZ[d] - out_startZ[other];
+                    double dist2 = dx*dx + dy*dy + dz*dz;
+                    if (dist2 < (4.0 * DRONE_RADIUS * DRONE_RADIUS + 10.0)) { // Give some buffer room
+                        safe_spawn = 0;
+                        break;
+                    }
+                }
             }
         }
     }
-    // 5. Find a Safe Target Position
-    int safe_target = 0;
-    while (!safe_target) {
-        target_x = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
-        target_z = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
-        target_y = env_rand_double(10.0, 15.0);
 
-        safe_target = 1;
-        for (int i = 0; i < num_active_obstacles; i++) {
-            double dx = target_x - obstacles[i].x;
-            double dy = target_y - obstacles[i].y;
-            double dz = target_z - obstacles[i].z;
-            double safe_distance = obstacles[i].radius + 5.0;
-            if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
-                safe_target = 0; 
-                break;
+    // 5. Find Safe Target Positions
+    for (int d = 0; d < N_DRONES; d++) {
+        int safe_target = 0;
+        while (!safe_target) {
+            target_x[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
+            target_z[d] = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
+            target_y[d] = env_rand_double(10.0, 15.0);
+
+            safe_target = 1;
+            for (int i = 0; i < num_active_obstacles; i++) {
+                double dx = target_x[d] - obstacles[i].x;
+                double dy = target_y[d] - obstacles[i].y;
+                double dz = target_z[d] - obstacles[i].z;
+                double safe_distance = obstacles[i].radius + 5.0;
+                if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                    safe_target = 0; 
+                    break;
+                }
             }
         }
     }
@@ -119,7 +137,7 @@ void init_lidar(void) {
 }
 
 // Computes the exact distance to the closest hit for a single ray
-static double shoot_single_ray(double ox, double oy, double oz, double dx, double dy, double dz) {
+static double shoot_single_ray(int drone_index, double ox, double oy, double oz, double dx, double dy, double dz, double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], int active[N_DRONES]) {
     double min_dist = MAX_LIDAR_RANGE;
 
     // 1. Check Intersection with 3D Obstacles
@@ -157,6 +175,35 @@ static double shoot_single_ray(double ox, double oy, double oz, double dx, doubl
         }
     }
 
+    // 1.5 Check Intersection with Other Drones
+    for (int i = 0; i < N_DRONES; i++) {
+        if (i == drone_index || !active[i]) continue;
+        
+        double lx = current_x[i] - ox;
+        double ly = current_y[i] - oy;
+        double lz = current_z[i] - oz;
+
+        double L2 = (lx*lx + ly*ly + lz*lz);
+        double radius2 = DRONE_RADIUS * DRONE_RADIUS;
+
+        if (L2 <= radius2) {
+            return 0.0; 
+        }
+
+        double tca = lx * dx + ly * dy + lz * dz;
+        if (tca < 0) continue;
+
+        double d2 = L2 - (tca*tca);
+        if (d2 > radius2) continue;
+
+        double thc = sqrt(radius2 - d2);
+        double hit_dist = tca - thc;
+
+        if (hit_dist > 0.0 && hit_dist < min_dist) {
+            min_dist = hit_dist;
+        }
+    }
+
     // 2. Check Intersection with Map Boundaries (Ray-Plane Intersection)
     double t_bounds;
     
@@ -175,9 +222,9 @@ static double shoot_single_ray(double ox, double oy, double oz, double dx, doubl
     return min_dist;
 }
 
-void compute_lidar_rays(double drone_x, double drone_y, double drone_z, double distances[NUM_RAYS]) {
+void compute_lidar_rays(int drone_index, double drone_x, double drone_y, double drone_z, double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], int active[N_DRONES], double distances[NUM_RAYS]) {
     for (int i = 0; i < NUM_RAYS; i++) {
-        distances[i] = shoot_single_ray(drone_x, drone_y, drone_z, rays[i].dir_x, rays[i].dir_y, rays[i].dir_z);
+        distances[i] = shoot_single_ray(drone_index, drone_x, drone_y, drone_z, rays[i].dir_x, rays[i].dir_y, rays[i].dir_z, current_x, current_y, current_z, active);
     }
 }
 
@@ -216,7 +263,10 @@ void export_environment(const char* filename) {
                 obstacles[i].x, obstacles[i].y, obstacles[i].z, obstacles[i].radius);
     }
 
-    fprintf(f, "TARGET,%.2f,%.2f,%.2f\n", target_x, target_y, target_z);
+    // Write all targets
+    for (int d = 0; d < N_DRONES; d++) {
+        fprintf(f, "TARGET,%.2f,%.2f,%.2f\n", target_x[d], target_y[d], target_z[d]);
+    }
     
     fclose(f);
 }

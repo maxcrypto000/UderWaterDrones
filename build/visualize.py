@@ -13,7 +13,8 @@ MAX_LIDAR_RANGE = 20.0
 # Will be populated dynamically from C output
 BOUNDS = {}
 OBSTACLES = []
-TARGET = {}
+TARGETS = []
+N_DRONES = 4
 
 def load_environment(filename):
     global BOUNDS, OBSTACLES
@@ -32,27 +33,39 @@ def load_environment(filename):
                     # x, y, z, radius
                     OBSTACLES.append((float(parts[1]), float(parts[2]), float(parts[3]), float(parts[4])))
                 elif parts[0] == 'TARGET':
-                    TARGET['x'] = float(parts[1])
-                    TARGET['y'] = float(parts[2])
-                    TARGET['z'] = float(parts[3])
+                    TARGETS.append({'x': float(parts[1]), 'y': float(parts[2]), 'z': float(parts[3])})
     except FileNotFoundError:
         print(f"Error: {filename} not found. Did you run the C simulation first?")
         exit(1)
 
 def load_telemetry(filename):
-    times, xs, ys, zs = [], [], [], []
+    times = []
+    drones_data = [{'x': [], 'y': [], 'z': []} for _ in range(N_DRONES)]
     try:
         with open(filename, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 times.append(float(row['time']))
-                xs.append(float(row['x']))
-                ys.append(float(row['y']))
-                zs.append(float(row['z']))
+                for d in range(N_DRONES):
+                    # Handle potential NaN strings if drones crash
+                    try:
+                        drones_data[d]['x'].append(float(row[f'x{d}']))
+                        drones_data[d]['y'].append(float(row[f'y{d}']))
+                        drones_data[d]['z'].append(float(row[f'z{d}']))
+                    except ValueError:
+                        # If it's NaN, just repeat the last known position
+                        if len(drones_data[d]['x']) > 0:
+                            drones_data[d]['x'].append(drones_data[d]['x'][-1])
+                            drones_data[d]['y'].append(drones_data[d]['y'][-1])
+                            drones_data[d]['z'].append(drones_data[d]['z'][-1])
+                        else:
+                            drones_data[d]['x'].append(0.0)
+                            drones_data[d]['y'].append(0.0)
+                            drones_data[d]['z'].append(0.0)
     except FileNotFoundError:
         print(f"Error: {filename} not found.")
         exit(1)
-    return times, xs, ys, zs
+    return times, drones_data
 
 def get_fibonacci_sphere(num_points):
     rays = []
@@ -123,7 +136,7 @@ def draw_patrol_area(ax):
         ax.plot(ex, ez, ey, color='black', alpha=0.3, linewidth=1, linestyle='--')
 
 
-def compute_ray_hit(origin, direction):
+def compute_ray_hit(drone_idx, origin, direction, all_drone_positions):
     min_dist = MAX_LIDAR_RANGE
     for ox, oy, oz, radius in OBSTACLES:
         center = np.array([ox, oy, oz])
@@ -140,6 +153,21 @@ def compute_ray_hit(origin, direction):
         if 0 < hit_dist < min_dist:
             min_dist = hit_dist
             
+    # Check Other Drones
+    drone_radius = 1.0
+    for d, d_pos in enumerate(all_drone_positions):
+        if d == drone_idx: continue
+        L_vec = d_pos - origin
+        if np.dot(L_vec, L_vec) <= drone_radius * drone_radius: return 0.0
+        tca = np.dot(L_vec, direction)
+        if tca < 0: continue
+        d2 = np.dot(L_vec, L_vec) - tca * tca
+        if d2 > drone_radius * drone_radius: continue
+        thc = math.sqrt(drone_radius * drone_radius - d2)
+        hit_dist = tca - thc
+        if 0 < hit_dist < min_dist:
+            min_dist = hit_dist
+
     # Check Sea Floor (Y = 0)
     if direction[1] < 0:
         t_floor = (BOUNDS['y_min'] - origin[1]) / direction[1]
@@ -170,18 +198,28 @@ def compute_ray_hit(origin, direction):
 
 def main():
     load_environment(ENVIRONMENT_FILE)
-    times, xs, ys, zs = load_telemetry(TELEMETRY_FILE)
+    times, drones_data = load_telemetry(TELEMETRY_FILE)
     rays_dirs = get_fibonacci_sphere(NUM_RAYS)
     
     fig = plt.figure(figsize=(12, 10))
     ax = fig.add_subplot(111, projection='3d')
     
-    # Draw Trajectory
-    ax.plot(xs, zs, ys, color='blue', linewidth=2, alpha=0.8, label='Trajectory')
-    ax.scatter(xs[0], zs[0], ys[0], color='lime', s=200, marker='*', edgecolor='black', zorder=5, label='Start')
-    # Draw Target Position (Gold Star)
-    if 'x' in TARGET:
-        ax.scatter(TARGET['x'], TARGET['z'], TARGET['y'], color='gold', s=300, marker='*', edgecolor='black', zorder=5, label='Target')
+    colors = ['blue', 'green', 'magenta', 'cyan']
+    
+    # Draw Trajectories and Starts
+    for d in range(N_DRONES):
+        c = colors[d % len(colors)]
+        xs = drones_data[d]['x']
+        ys = drones_data[d]['y']
+        zs = drones_data[d]['z']
+        if len(xs) > 0:
+            ax.plot(xs, zs, ys, color=c, linewidth=2, alpha=0.8, label=f'Trajectory {d}')
+            ax.scatter(xs[0], zs[0], ys[0], color='lime', s=100, marker='*', edgecolor='black', zorder=5)
+    
+    # Draw Target Positions (Gold Star)
+    for d, tg in enumerate(TARGETS):
+        ax.scatter(tg['x'], tg['z'], tg['y'], color='gold', s=150, marker='*', edgecolor='black', zorder=5, label=f'Target {d}')
+        
     # Draw Sea Floor
     xx, zz = np.meshgrid([BOUNDS['x_min'], BOUNDS['x_max']], [BOUNDS['z_min'], BOUNDS['z_max']])
     yy = np.full_like(xx, BOUNDS['y_min'])
@@ -194,8 +232,17 @@ def main():
     for obs in OBSTACLES:
         draw_hemisphere(ax, obs[0], obs[1], obs[2], obs[3])
 
-    drone_marker, = ax.plot([], [], [], 'go', markersize=8, label='Drone')
-    ray_lines = [ax.plot([], [], [], color='cyan', alpha=0.3, linewidth=1)[0] for _ in range(NUM_RAYS)]
+    drone_markers = []
+    ray_lines = []
+    for d in range(N_DRONES):
+        c = colors[d % len(colors)]
+        marker, = ax.plot([], [], [], 'o', color=c, markersize=8, label=f'Drone {d}')
+        drone_markers.append(marker)
+        
+        # Only draw lidars for drone 0 to avoid massive lag and clutter, 
+        # or we could do it for all but alpha=0.1
+        drone_rays = [ax.plot([], [], [], color=c, alpha=0.1, linewidth=1)[0] for _ in range(NUM_RAYS)]
+        ray_lines.append(drone_rays)
 
     ax.set_xlabel('X (Horizontal) [m]')
     ax.set_ylabel('Z (Depth) [m]')
@@ -207,37 +254,43 @@ def main():
     ax.set_ylim([BOUNDS['z_min'] - margin, BOUNDS['z_max'] + margin])
     ax.set_zlim([BOUNDS['y_min'], BOUNDS['y_max'] + margin])
     
-    ax.legend(loc='upper right')
+    ax.legend(loc='upper right', fontsize='small')
     
     def update(frame):
-        pos = np.array([xs[frame], ys[frame], zs[frame]])
-        drone_marker.set_data([pos[0]], [pos[2]])
-        drone_marker.set_3d_properties([pos[1]])
+        all_drones_pos = []
+        for d in range(N_DRONES):
+            xs = drones_data[d]['x']
+            ys = drones_data[d]['y']
+            zs = drones_data[d]['z']
+            all_drones_pos.append(np.array([xs[frame], ys[frame], zs[frame]]))
+            
+        artists = []
         
-        for i, ray_dir in enumerate(rays_dirs):
-            hit_dist = compute_ray_hit(pos, ray_dir)
-            end_pos = pos + ray_dir * hit_dist
-            ray_lines[i].set_data([pos[0], end_pos[0]], [pos[2], end_pos[2]])
-            ray_lines[i].set_3d_properties([pos[1], end_pos[1]])
-            if hit_dist < MAX_LIDAR_RANGE:
-                ray_lines[i].set_color('red')
-                ray_lines[i].set_alpha(0.8)
-            else:
-                ray_lines[i].set_color('cyan')
-                ray_lines[i].set_alpha(0.2)
-        
-        dist_str = ""
-        if 'x' in TARGET:
-            dx = TARGET['x'] - pos[0]
-            dy = TARGET['y'] - pos[1]
-            dz = TARGET['z'] - pos[2]
-            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-            dist_str = f" | Dist: {dist:.2f}m"
+        for d in range(N_DRONES):
+            pos = all_drones_pos[d]
+            drone_markers[d].set_data([pos[0]], [pos[2]])
+            drone_markers[d].set_3d_properties([pos[1]])
+            artists.append(drone_markers[d])
+            
+            # Update rays for this drone
+            for i, ray_dir in enumerate(rays_dirs):
+                hit_dist = compute_ray_hit(d, pos, ray_dir, all_drones_pos)
+                end_pos = pos + ray_dir * hit_dist
+                ray_lines[d][i].set_data([pos[0], end_pos[0]], [pos[2], end_pos[2]])
+                ray_lines[d][i].set_3d_properties([pos[1], end_pos[1]])
+                if hit_dist < MAX_LIDAR_RANGE:
+                    ray_lines[d][i].set_color('red')
+                    ray_lines[d][i].set_alpha(0.8)
+                else:
+                    ray_lines[d][i].set_color(colors[d % len(colors)])
+                    ray_lines[d][i].set_alpha(0.1)
+                artists.append(ray_lines[d][i])
                 
-        ax.set_title(f"Simulation | T = {times[frame]:.2f}s{dist_str} | Env Bounds: {BOUNDS['x_max']:.0f}x{BOUNDS['y_max']:.0f}x{BOUNDS['z_max']:.0f}")
-        return [drone_marker] + ray_lines
+        ax.set_title(f"Simulation MARL | T = {times[frame]:.2f}s | {N_DRONES} Drones")
+        return artists
 
-    ani = FuncAnimation(fig, update, frames=range(0, len(xs), 4), interval=50, blit=False)
+    num_frames = len(times)
+    ani = FuncAnimation(fig, update, frames=range(0, num_frames, 4), interval=50, blit=False)
     plt.show()
 
 if __name__ == '__main__':
