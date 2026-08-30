@@ -6,7 +6,7 @@
 #define NUM_RAYS 64
 #define MAX_OBSTACLES 10 // Maximum memory allocation for mountains
 
-#define N_DRONES 4
+#define N_DRONES 5
 #define DRONE_RADIUS 1.0
 
 typedef struct {
@@ -27,6 +27,7 @@ extern double map_x_min, map_x_max;
 extern double map_y_min, map_y_max;
 extern double map_z_min, map_z_max;
 extern int num_active_obstacles;
+extern int num_active_drones;
 extern double target_x[N_DRONES], target_y[N_DRONES], target_z[N_DRONES];
 extern Obstacle3D obstacles[MAX_OBSTACLES];
 

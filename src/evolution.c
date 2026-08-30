@@ -59,7 +59,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
     fmi2_value_reference_t vr_inputs[3] = { VR_UX, VR_UY, VR_UZ };
     fmi2_value_reference_t vr_outputs[4] = { VR_X, VR_Y, VR_Z, VR_VX };
     
-    for (int d = 0; d < N_DRONES; d++) {
+    for (int d = 0; d < num_active_drones; d++) {
         fmi2_import_setup_experiment(fmus[d], fmi2_true, 1e-4, t_start, fmi2_true, t_end);
         
         double start_vals[3] = { start_x[d], start_y[d], start_z[d] };
@@ -77,6 +77,12 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
         current_x[d] = start_x[d];
         current_y[d] = start_y[d];
         current_z[d] = start_z[d];
+    }
+    
+    // Disable inactive drones
+    for (int d = num_active_drones; d < N_DRONES; d++) {
+        active[d] = 0;
+        fitnesses[d] = 0.0;
     }
     
     double current_time = t_start;
@@ -106,8 +112,10 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             fprintf(csv_file, "\n");
         }
         
+        int any_crashed = 0;
+        
         // 2. Compute Lidar and Process Neural Nets
-        for (int d = 0; d < N_DRONES; d++) {
+        for (int d = 0; d < num_active_drones; d++) {
             if (!active[d]) continue;
             
             double lidar_distances[NUM_RAYS];
@@ -128,13 +136,18 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
             
             double progress = previous_distances[d] - current_distance;
-            fitnesses[d] += progress * 200.0;
+            fitnesses[d] += progress * 100.0;
             previous_distances[d] = current_distance;
             
             if (collision) {
                 fitnesses[d] -= 500.0;
                 active[d] = 0;
-                continue;
+#if ENABLE_TEAM_CRASH
+                any_crashed = 1; // Team crash!
+                break;
+#else
+                continue; // Independent training: just this drone fails
+#endif
             }
             
             if (current_distance < 5.0) {
@@ -161,17 +174,23 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             fmi2_import_do_step(fmus[d], current_time, step_size, fmi2_true);
         }
         
+#if ENABLE_TEAM_CRASH
+        if (any_crashed) break; // Terminate episode for all drones
+#endif
+
         current_time += step_size;
     }
     
     double total_fitness = 0.0;
-    for (int d = 0; d < N_DRONES; d++) {
+    for (int d = 0; d < num_active_drones; d++) {
         fmi2_import_terminate(fmus[d]);
         fmi2_import_reset(fmus[d]);
         total_fitness += fitnesses[d];
     }
     
-    return total_fitness; 
+    // Normalize fitness by the number of active drones to stabilize the algorithm 
+    // across random environments with varying density
+    return total_fitness / num_active_drones; 
 }
 
 // ============================================================================
@@ -199,8 +218,14 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
         fprintf(fitness_csv, "Generation,AverageFitness,MaxFitness\n");
     }
 
+    FILE* time_csv = fopen("generation_times.csv", "w");
+    if (time_csv != NULL) {
+        fprintf(time_csv, "Generation,TimeSeconds\n");
+    }
+
     // GENERATIONAL LOOP
     for (int gen = 0; gen < GENERATIONS; gen++) {
+        clock_t gen_start = clock();
          
         // A & B. Procedural Environmental Regeneration and Population Evaluation
         // Step 3 and 4 of OpenAI ES Algorithm 1
@@ -288,7 +313,7 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
             base_ptr[i] += LEARNING_RATE * gradient_estimate / (POPULATION_SIZE * SIGMA);
         }
 
-        printf("Generation %03d | Average Fitness: %8.2f | Max: %8.2f\n", gen, total_fitness / POPULATION_SIZE, max_fitness);
+        printf("Generation %03d | Average Fitness: %8.2f | Max: %8.2f ", gen, total_fitness / POPULATION_SIZE, max_fitness);
         
         if (fitness_csv != NULL) {
             fprintf(fitness_csv, "%d,%f,%f\n", gen, total_fitness / POPULATION_SIZE, max_fitness);
@@ -310,10 +335,21 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
             run_episode(fmus, tel_start_x, tel_start_y, tel_start_z, &base_nn, telemetry_csv);
             fclose(telemetry_csv);
         }
+        
+        if (time_csv != NULL) {
+            clock_t gen_end = clock();
+            double elapsed = (double)(gen_end - gen_start) / CLOCKS_PER_SEC;
+            printf("Time: %f\n", elapsed);
+            fprintf(time_csv, "%d,%f\n", gen, elapsed);
+            fflush(time_csv);
+        }
     }
 
     if (fitness_csv != NULL) {
         fclose(fitness_csv);
+    }
+    if (time_csv != NULL) {
+        fclose(time_csv);
     }
     
     // Salva il Cervello Master definitivo su disco
@@ -342,7 +378,7 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
 
     // 2. Generates a completely new map to test generalization
     // Using the current time as seed guarantees a new scenario every time
-    unsigned int test_seed = 12; //(unsigned int)time(NULL); 
+    unsigned int test_seed = 137; //(unsigned int)time(NULL); 
     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
     generate_random_environment(test_seed, start_x, start_y, start_z);

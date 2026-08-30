@@ -16,6 +16,7 @@ double map_z_min = -50.0;
 double map_z_max =  50.0;
 
 int num_active_obstacles = 0;
+int num_active_drones = 1;
 Obstacle3D obstacles[MAX_OBSTACLES];
 static LidarRay rays[NUM_RAYS];
 double target_x[N_DRONES], target_y[N_DRONES], target_z[N_DRONES];
@@ -54,8 +55,11 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
         obstacles[i].y = 0.0; // Grounded on the sea floor
     }
 
-    // 4. Find Safe Spawn Positions
-    for (int d = 0; d < N_DRONES; d++) {
+    // 4. Determine random number of drones
+    num_active_drones = 1 + (env_rand() % N_DRONES);
+
+    // 5. Find Safe Spawn Positions
+    for (int d = 0; d < num_active_drones; d++) {
         int safe_spawn = 0;
         while (!safe_spawn) {
             out_startX[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
@@ -92,8 +96,8 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
         }
     }
 
-    // 5. Find Safe Target Positions
-    for (int d = 0; d < N_DRONES; d++) {
+    // 6. Find Safe Target Positions
+    for (int d = 0; d < num_active_drones; d++) {
         int safe_target = 0;
         while (!safe_target) {
             target_x[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
@@ -263,8 +267,8 @@ void export_environment(const char* filename) {
                 obstacles[i].x, obstacles[i].y, obstacles[i].z, obstacles[i].radius);
     }
 
-    // Write all targets
-    for (int d = 0; d < N_DRONES; d++) {
+    // Write all targets for active drones
+    for (int d = 0; d < num_active_drones; d++) {
         fprintf(f, "TARGET,%.2f,%.2f,%.2f\n", target_x[d], target_y[d], target_z[d]);
     }
     

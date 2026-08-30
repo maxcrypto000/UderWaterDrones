@@ -201,13 +201,15 @@ def main():
     times, drones_data = load_telemetry(TELEMETRY_FILE)
     rays_dirs = get_fibonacci_sphere(NUM_RAYS)
     
+    num_active_drones = len(TARGETS)
+    
     fig = plt.figure(figsize=(12, 10))
     ax = fig.add_subplot(111, projection='3d')
     
     colors = ['blue', 'green', 'magenta', 'cyan']
     
     # Draw Trajectories and Starts
-    for d in range(N_DRONES):
+    for d in range(num_active_drones):
         c = colors[d % len(colors)]
         xs = drones_data[d]['x']
         ys = drones_data[d]['y']
@@ -234,7 +236,7 @@ def main():
 
     drone_markers = []
     ray_lines = []
-    for d in range(N_DRONES):
+    for d in range(num_active_drones):
         c = colors[d % len(colors)]
         marker, = ax.plot([], [], [], 'o', color=c, markersize=8, label=f'Drone {d}')
         drone_markers.append(marker)
@@ -258,7 +260,7 @@ def main():
     
     def update(frame):
         all_drones_pos = []
-        for d in range(N_DRONES):
+        for d in range(num_active_drones):
             xs = drones_data[d]['x']
             ys = drones_data[d]['y']
             zs = drones_data[d]['z']
@@ -266,7 +268,7 @@ def main():
             
         artists = []
         
-        for d in range(N_DRONES):
+        for d in range(num_active_drones):
             pos = all_drones_pos[d]
             drone_markers[d].set_data([pos[0]], [pos[2]])
             drone_markers[d].set_3d_properties([pos[1]])
@@ -286,7 +288,7 @@ def main():
                     ray_lines[d][i].set_alpha(0.1)
                 artists.append(ray_lines[d][i])
                 
-        ax.set_title(f"Simulation MARL | T = {times[frame]:.2f}s | {N_DRONES} Drones")
+        ax.set_title(f"Simulation MARL | T = {times[frame]:.2f}s | {num_active_drones} Drones")
         return artists
 
     num_frames = len(times)

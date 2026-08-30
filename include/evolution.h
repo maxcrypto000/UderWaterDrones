@@ -19,6 +19,8 @@
 // Number of different environments each neural network is evaluated on (Monte Carlo)
 #define MONTECARLO_SAMPLES 5
 
+#define ENABLE_TEAM_CRASH 0
+
 
 // Standard deviation (Sigma) for extracting Gaussian noise.
 // Controls how much we "explore" the parameter space. If too low, 
