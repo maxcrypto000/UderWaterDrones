@@ -85,12 +85,12 @@ clean: CMakeFiles/DroneTest.dir/clean
 CMakeFiles/DroneTest.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target DroneTest"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=1,2,3,4,5,6,7,8 "Built target DroneTest"
 .PHONY : CMakeFiles/DroneTest.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/DroneTest.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles 7
+	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles 8
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/DroneTest.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles 0
 .PHONY : CMakeFiles/DroneTest.dir/rule
@@ -102,7 +102,7 @@ DroneTest: CMakeFiles/DroneTest.dir/rule
 # codegen rule for target.
 CMakeFiles/DroneTest.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Finished codegen for target DroneTest"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=1,2,3,4,5,6,7,8 "Finished codegen for target DroneTest"
 .PHONY : CMakeFiles/DroneTest.dir/codegen
 
 # clean rule for target.

@@ -274,3 +274,89 @@ void export_environment(const char* filename) {
     
     fclose(f);
 }
+void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
+    env_rand_state = seed;
+    map_x_max = env_rand_double(40.0, 80.0);
+    map_x_min = -map_x_max;
+    map_z_max = env_rand_double(40.0, 80.0);
+    map_z_min = -map_z_max;
+    map_y_min = 0.0;
+    map_y_max = env_rand_double(40.0, 50.0);
+
+    num_active_obstacles = 2 + (env_rand() % 5);
+    for (int i = 0; i < num_active_obstacles; i++) {
+        obstacles[i].radius = env_rand_double(8.0, 25.0);
+        obstacles[i].x = env_rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
+        obstacles[i].z = env_rand_double(map_z_min + obstacles[i].radius, map_z_max - obstacles[i].radius);
+        obstacles[i].y = 0.0;
+    }
+
+    num_active_drones = 1 + (env_rand() % N_DRONES);
+
+    for (int d = 0; d < num_active_drones; d++) {
+        int safe_spawn = 0;
+        while (!safe_spawn) {
+            out_startX[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
+            out_startZ[d] = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
+            out_startY[d] = DRONE_RADIUS; // FIXED ON SEA BED
+
+            safe_spawn = 1;
+            for (int i = 0; i < num_active_obstacles; i++) {
+                double dx = out_startX[d] - obstacles[i].x;
+                double dy = out_startY[d] - obstacles[i].y;
+                double dz = out_startZ[d] - obstacles[i].z;
+                double safe_distance = obstacles[i].radius + 5.0;
+                if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                    safe_spawn = 0; 
+                    break;
+                }
+            }
+            if (safe_spawn) {
+                for (int other = 0; other < d; other++) {
+                    double dx = out_startX[d] - out_startX[other];
+                    double dy = out_startY[d] - out_startY[other];
+                    double dz = out_startZ[d] - out_startZ[other];
+                    double dist2 = dx*dx + dy*dy + dz*dz;
+                    if (dist2 < (4.0 * DRONE_RADIUS * DRONE_RADIUS + 10.0)) {
+                        safe_spawn = 0;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void generate_local_target(double cx, double cy, double cz, double* tx, double* ty, double* tz, double radius) {
+    int safe_target = 0;
+    while (!safe_target) {
+        double ox = env_rand_double(-radius, radius);
+        double oy = env_rand_double(-radius, radius);
+        double oz = env_rand_double(-radius, radius);
+        
+        if (ox*ox + oy*oy + oz*oz > radius*radius) continue;
+
+        *tx = cx + ox;
+        *ty = cy + oy;
+        *tz = cz + oz;
+
+        if (*tx < map_x_min + 5.0) *tx = map_x_min + 5.0;
+        if (*tx > map_x_max - 5.0) *tx = map_x_max - 5.0;
+        if (*ty < 5.0) *ty = 5.0; 
+        if (*ty > map_y_max - 5.0) *ty = map_y_max - 5.0;
+        if (*tz < map_z_min + 5.0) *tz = map_z_min + 5.0;
+        if (*tz > map_z_max - 5.0) *tz = map_z_max - 5.0;
+
+        safe_target = 1;
+        for (int i = 0; i < num_active_obstacles; i++) {
+            double dx = *tx - obstacles[i].x;
+            double dy = *ty - obstacles[i].y;
+            double dz = *tz - obstacles[i].z;
+            double safe_distance = obstacles[i].radius + 5.0;
+            if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                safe_target = 0; 
+                break;
+            }
+        }
+    }
+}

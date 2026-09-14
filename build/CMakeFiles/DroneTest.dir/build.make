@@ -147,11 +147,26 @@ CMakeFiles/DroneTest.dir/src/main.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/DroneTest.dir/src/main.c.s"
 	C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/main.c -o CMakeFiles/DroneTest.dir/src/main.c.s
 
+CMakeFiles/DroneTest.dir/src/mission.c.obj: CMakeFiles/DroneTest.dir/flags.make
+CMakeFiles/DroneTest.dir/src/mission.c.obj: CMakeFiles/DroneTest.dir/includes_C.rsp
+CMakeFiles/DroneTest.dir/src/mission.c.obj: C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/mission.c
+CMakeFiles/DroneTest.dir/src/mission.c.obj: CMakeFiles/DroneTest.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/DroneTest.dir/src/mission.c.obj"
+	C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/DroneTest.dir/src/mission.c.obj -MF CMakeFiles/DroneTest.dir/src/mission.c.obj.d -o CMakeFiles/DroneTest.dir/src/mission.c.obj -c C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/mission.c
+
+CMakeFiles/DroneTest.dir/src/mission.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/DroneTest.dir/src/mission.c.i"
+	C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/mission.c > CMakeFiles/DroneTest.dir/src/mission.c.i
+
+CMakeFiles/DroneTest.dir/src/mission.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/DroneTest.dir/src/mission.c.s"
+	C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/mission.c -o CMakeFiles/DroneTest.dir/src/mission.c.s
+
 CMakeFiles/DroneTest.dir/src/neural_network.c.obj: CMakeFiles/DroneTest.dir/flags.make
 CMakeFiles/DroneTest.dir/src/neural_network.c.obj: CMakeFiles/DroneTest.dir/includes_C.rsp
 CMakeFiles/DroneTest.dir/src/neural_network.c.obj: C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/neural_network.c
 CMakeFiles/DroneTest.dir/src/neural_network.c.obj: CMakeFiles/DroneTest.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/DroneTest.dir/src/neural_network.c.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/DroneTest.dir/src/neural_network.c.obj"
 	C:/msys64/mingw64/bin/gcc.exe $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/DroneTest.dir/src/neural_network.c.obj -MF CMakeFiles/DroneTest.dir/src/neural_network.c.obj.d -o CMakeFiles/DroneTest.dir/src/neural_network.c.obj -c C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/neural_network.c
 
 CMakeFiles/DroneTest.dir/src/neural_network.c.i: cmake_force
@@ -169,6 +184,7 @@ DroneTest_OBJECTS = \
 "CMakeFiles/DroneTest.dir/src/fmi_wrapper.c.obj" \
 "CMakeFiles/DroneTest.dir/src/lidar_sim.c.obj" \
 "CMakeFiles/DroneTest.dir/src/main.c.obj" \
+"CMakeFiles/DroneTest.dir/src/mission.c.obj" \
 "CMakeFiles/DroneTest.dir/src/neural_network.c.obj"
 
 # External object files for target DroneTest
@@ -179,11 +195,12 @@ DroneTest.exe: CMakeFiles/DroneTest.dir/src/evolution.c.obj
 DroneTest.exe: CMakeFiles/DroneTest.dir/src/fmi_wrapper.c.obj
 DroneTest.exe: CMakeFiles/DroneTest.dir/src/lidar_sim.c.obj
 DroneTest.exe: CMakeFiles/DroneTest.dir/src/main.c.obj
+DroneTest.exe: CMakeFiles/DroneTest.dir/src/mission.c.obj
 DroneTest.exe: CMakeFiles/DroneTest.dir/src/neural_network.c.obj
 DroneTest.exe: CMakeFiles/DroneTest.dir/build.make
 DroneTest.exe: CMakeFiles/DroneTest.dir/linkLibs.rsp
 DroneTest.exe: CMakeFiles/DroneTest.dir/objects1.rsp
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking C executable DroneTest.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking C executable DroneTest.exe"
 	"C:/Program Files/CMake/bin/cmake.exe" -E rm -f CMakeFiles/DroneTest.dir/objects.a
 	C:/msys64/mingw64/bin/ar.exe qc CMakeFiles/DroneTest.dir/objects.a @CMakeFiles/DroneTest.dir/objects1.rsp
 	C:/msys64/mingw64/bin/gcc.exe -g -Wl,--whole-archive CMakeFiles/DroneTest.dir/objects.a -Wl,--no-whole-archive -o DroneTest.exe -Wl,--out-implib,libDroneTest.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles/DroneTest.dir/linkLibs.rsp

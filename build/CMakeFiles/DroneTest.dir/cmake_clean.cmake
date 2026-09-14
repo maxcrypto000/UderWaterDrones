@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/DroneTest.dir/src/lidar_sim.c.obj.d"
   "CMakeFiles/DroneTest.dir/src/main.c.obj"
   "CMakeFiles/DroneTest.dir/src/main.c.obj.d"
+  "CMakeFiles/DroneTest.dir/src/mission.c.obj"
+  "CMakeFiles/DroneTest.dir/src/mission.c.obj.d"
   "CMakeFiles/DroneTest.dir/src/neural_network.c.obj"
   "CMakeFiles/DroneTest.dir/src/neural_network.c.obj.d"
   "DroneTest.exe"

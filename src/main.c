@@ -5,16 +5,21 @@
 #include <fmilib.h>
 #include "environment.h"
 #include "evolution.h"
+#include "mission.h"
 
 void jm_logger(jm_callbacks* c, jm_string module, jm_log_level_enu_t log_level, jm_string message) {}
 
-// Notice the addition of argc and argv to read terminal commands
 int main(int argc, char* argv[]) {
     
-    // Default mode is train if no arguments are provided
     int run_test = 0; 
-    if (argc > 1 && strcmp(argv[1], "test") == 0) {
-        run_test = 1;
+    int run_mission = 0;
+    
+    if (argc > 1) {
+        if (strcmp(argv[1], "test") == 0) {
+            run_test = 1;
+        } else if (strcmp(argv[1], "mission") == 0) {
+            run_mission = 1;
+        }
     }
 
     srand((unsigned int)time(NULL));
@@ -55,7 +60,9 @@ int main(int argc, char* argv[]) {
     }
 
     // --- EXECUTION BRANCH ---
-    if (run_test) {
+    if (run_mission) {
+        es_mission(fmus, "best_model.bin");
+    } else if (run_test) {
         // Runs the pre-trained neural network on a random map
         es_test(fmus, "best_model.bin");
     } else {

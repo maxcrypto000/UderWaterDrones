@@ -6,16 +6,17 @@
 #include <time.h>
 
 // --- VALUE REFERENCES FROM XML ---
-#define VR_UX 12  
-#define VR_UY 13
-#define VR_UZ 14
-#define VR_X  19   
-#define VR_Y  20
-#define VR_Z  21
-#define VR_VX 16
-#define VR_START_X 24
-#define VR_START_Y 25 
-#define VR_START_Z 26 
+#define VR_BATTERY 14
+#define VR_UX 18  
+#define VR_UY 19
+#define VR_UZ 20
+#define VR_X  25   
+#define VR_Y  26
+#define VR_Z  27
+#define VR_VX 22
+#define VR_START_X 35
+#define VR_START_Y 36 
+#define VR_START_Z 37 
 // Maximum engine thrust in Newtons. Multiplies the [-1, 1] network output.
 #define MAX_THRUST 20.0 
 
@@ -54,10 +55,11 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
     double current_x[N_DRONES];
     double current_y[N_DRONES];
     double current_z[N_DRONES];
+    double current_battery[N_DRONES];
 
     fmi2_value_reference_t vr_starts[3] = { VR_START_X, VR_START_Y, VR_START_Z };
     fmi2_value_reference_t vr_inputs[3] = { VR_UX, VR_UY, VR_UZ };
-    fmi2_value_reference_t vr_outputs[4] = { VR_X, VR_Y, VR_Z, VR_VX };
+    fmi2_value_reference_t vr_outputs[4] = { VR_X, VR_Y, VR_Z, VR_BATTERY };
     
     for (int d = 0; d < num_active_drones; d++) {
         fmi2_import_setup_experiment(fmus[d], fmi2_true, 1e-4, t_start, fmi2_true, t_end);
@@ -100,6 +102,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             current_x[d] = output_values[0];
             current_y[d] = output_values[1];
             current_z[d] = output_values[2];
+            current_battery[d] = output_values[3];
         }
         
         if (!any_active) break;
@@ -107,7 +110,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
         if (csv_file != NULL) {
             fprintf(csv_file, "%.3f", current_time);
             for (int d = 0; d < N_DRONES; d++) {
-                fprintf(csv_file, ",%.3f,%.3f,%.3f", current_x[d], current_y[d], current_z[d]);
+                fprintf(csv_file, ",%.3f,%.3f,%.3f,%.3f", current_x[d], current_y[d], current_z[d], current_battery[d]);
             }
             fprintf(csv_file, "\n");
         }
@@ -150,15 +153,33 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
 #endif
             }
             
+            if (current_battery[d] <= 0.0) {
+                fitnesses[d] -= 1000.0;
+                active[d] = 0;
+#if ENABLE_TEAM_CRASH
+                any_crashed = 1; // Team crash!
+                break;
+#else
+                continue; // Independent training: just this drone fails
+#endif
+            }
+            
             if (current_distance < 5.0) {
-                fitnesses[d] += 1000.0 + (t_end - current_time) * 100.0;
+                fitnesses[d] += 1000.0 + (current_battery[d] * 50.0);
                 active[d] = 0;
                 continue;
             }
             
-            nn_inputs[64] = dx / 100.0;
-            nn_inputs[65] = dy / 100.0;
-            nn_inputs[66] = dz / 100.0;
+            if (current_distance > 0.001) {
+                nn_inputs[64] = dx / current_distance;
+                nn_inputs[65] = dy / current_distance;
+                nn_inputs[66] = dz / current_distance;
+            } else {
+                nn_inputs[64] = 0.0;
+                nn_inputs[65] = 0.0;
+                nn_inputs[66] = 0.0;
+            }
+            nn_inputs[67] = current_battery[d] / 100.0;
             
             nn_feedforward(nn, nn_inputs, nn_outputs);
             
@@ -330,7 +351,7 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
         FILE* telemetry_csv = fopen("telemetry.csv", "w");
         if (telemetry_csv != NULL) {
             fprintf(telemetry_csv, "time"); 
-            for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d", d, d, d);
+            for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d,bat%d", d, d, d, d);
             fprintf(telemetry_csv, "\n");
             run_episode(fmus, tel_start_x, tel_start_y, tel_start_z, &base_nn, telemetry_csv);
             fclose(telemetry_csv);
@@ -389,11 +410,10 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
         printf("Drone %d Target: X=%.2f, Y=%.2f, Z=%.2f\n", d, target_x[d], target_y[d], target_z[d]);
     }
 
-    // 3. Executes a single rollout and records the trajectory
     FILE* telemetry_csv = fopen("telemetry.csv", "w");
     if (telemetry_csv != NULL) {
         fprintf(telemetry_csv, "time"); 
-        for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d", d, d, d);
+        for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d,bat%d", d, d, d, d);
         fprintf(telemetry_csv, "\n");
         
         printf("\n>>> STARTING INFERENCE FLIGHT...\n");

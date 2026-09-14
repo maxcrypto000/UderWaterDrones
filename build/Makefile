@@ -249,6 +249,30 @@ src/main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/src/main.c.s
 .PHONY : src/main.c.s
 
+src/mission.obj: src/mission.c.obj
+.PHONY : src/mission.obj
+
+# target to build an object file
+src/mission.c.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/src/mission.c.obj
+.PHONY : src/mission.c.obj
+
+src/mission.i: src/mission.c.i
+.PHONY : src/mission.i
+
+# target to preprocess a source file
+src/mission.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/src/mission.c.i
+.PHONY : src/mission.c.i
+
+src/mission.s: src/mission.c.s
+.PHONY : src/mission.s
+
+# target to generate assembly for a file
+src/mission.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/DroneTest.dir/build.make CMakeFiles/DroneTest.dir/src/mission.c.s
+.PHONY : src/mission.c.s
+
 src/neural_network.obj: src/neural_network.c.obj
 .PHONY : src/neural_network.obj
 
@@ -297,6 +321,9 @@ help:
 	@echo "... src/main.obj"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/mission.obj"
+	@echo "... src/mission.i"
+	@echo "... src/mission.s"
 	@echo "... src/neural_network.obj"
 	@echo "... src/neural_network.i"
 	@echo "... src/neural_network.s"

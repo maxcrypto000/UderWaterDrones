@@ -2,8 +2,8 @@
 #define NEURAL_NETWORK_H
 
 // --- ARCHITECTURE DEFINITION ---
-// 64 Lidar Rays + 3 Target Vector Coordinates (dx, dy, dz)
-#define NN_INPUT_SIZE 67  
+// Total inputs: 64 Lidar rays + 3 relative target coordinates (dx, dy, dz) + 1 battery
+#define NN_INPUT_SIZE 68  
 #define NN_HIDDEN_SIZE 32
 #define NN_OUTPUT_SIZE 3  // Thrust X, Thrust Y, Thrust Z
 

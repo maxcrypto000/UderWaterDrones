@@ -31,6 +31,12 @@
 },
 {
   "directory": "C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build",
+  "command": "C:/msys64/mingw64/bin/gcc.exe  @CMakeFiles/DroneTest.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles/DroneTest.dir/src/mission.c.obj -c C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/mission.c",
+  "file": "C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/mission.c",
+  "output": "CMakeFiles/DroneTest.dir/src/mission.c.obj"
+},
+{
+  "directory": "C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/build",
   "command": "C:/msys64/mingw64/bin/gcc.exe  @CMakeFiles/DroneTest.dir/includes_C.rsp -g -std=gnu11 -o CMakeFiles/DroneTest.dir/src/neural_network.c.obj -c C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/neural_network.c",
   "file": "C:/Users/maxbu/Desktop/uni/VerificaEvalidazione/progetto/controllore2/src/neural_network.c",
   "output": "CMakeFiles/DroneTest.dir/src/neural_network.c.obj"

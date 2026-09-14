@@ -41,3 +41,35 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
 // Exports the generated environment to a file for Python visualization
 void export_environment(const char* filename);
 #endif
+// --- DYNAMIC MISSION ---
+
+/**
+ * @brief Generates a random environment specifically for the dynamic mission.
+ * 
+ * Unlike standard training where drones spawn in mid-air, this variant ensures
+ * drones spawn safely resting on the seabed (Y = DRONE_RADIUS) while avoiding 
+ * initial collisions with randomly generated mountainous obstacles.
+ *
+ * @param seed Random seed for reproducible generation.
+ * @param out_startX Array to store the generated X starting coordinates.
+ * @param out_startY Array to store the generated Y starting coordinates.
+ * @param out_startZ Array to store the generated Z starting coordinates.
+ */
+void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
+
+/**
+ * @brief Generates a localized, obstacle-free target waypoint for a drone.
+ *
+ * Computes a random (x, y, z) target within a specified radial neighborhood 
+ * of the drone's current position. The generated target is guaranteed to 
+ * respect map boundaries and not intersect any obstacle geometries.
+ *
+ * @param cx Current drone X coordinate.
+ * @param cy Current drone Y coordinate.
+ * @param cz Current drone Z coordinate.
+ * @param tx Pointer to output target X coordinate.
+ * @param ty Pointer to output target Y coordinate.
+ * @param tz Pointer to output target Z coordinate.
+ * @param radius The maximum radial distance for the new target.
+ */
+void generate_local_target(double cx, double cy, double cz, double* tx, double* ty, double* tz, double radius);

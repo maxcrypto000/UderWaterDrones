@@ -48,10 +48,11 @@ if __name__ == "__main__":
     
     # Insert the exact names of the variables you want to find the VR for
     target_variables = [
-        "ux", "uy", "uz",          # Input
-        "x", "y", "z",             # Position Output
-        "vx", "vy", "vz",          # Velocity Output
-        "start_x", "start_y", "start_z" # Parameters
+        "ux", "uy", "uz",                # Input
+        "x", "y", "z",                   # Position Output
+        "vx", "vy", "vz",                # Velocity Output
+        "start_x", "start_y", "start_z", # Parameters
+        "battery"                        # Battery Output
     ]
     
     extract_value_references(fmu_file_path, target_variables)
