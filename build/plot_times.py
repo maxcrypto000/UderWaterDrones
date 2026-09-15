@@ -15,9 +15,9 @@ def main():
     plt.plot(df['Generation'], df['TimeSeconds'], color='teal', linewidth=1.5, alpha=0.6, label='Tempo Effettivo')
     
     # Calcola media mobile per smussare il grafico
-    if len(df) >= 10:
-        ma = df['TimeSeconds'].rolling(window=10).mean()
-        plt.plot(df['Generation'], ma, color='red', linestyle='-', linewidth=2, label='Media Mobile (10 Gen)')
+    if len(df) >= 50:
+        ma = df['TimeSeconds'].rolling(window=50).mean()
+        plt.plot(df['Generation'], ma, color='red', linestyle='-', linewidth=2, label='Media Mobile (50 Gen)')
         
     plt.title('Tempo di Computazione per Generazione')
     plt.xlabel('Generazione')

@@ -1,3 +1,8 @@
+/**
+ * @file environment.c
+ * @brief Implementation of the environment generation and LIDAR sensor logic.
+ */
+
 #include "environment.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +12,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// Define the global map variables
+// --- GLOBAL VARIABLES ---
+
 double map_x_min = -50.0;
 double map_x_max =  50.0;
 double map_y_min =   0.0;
@@ -20,17 +26,51 @@ int num_active_drones = 1;
 Obstacle3D obstacles[MAX_OBSTACLES];
 static LidarRay rays[NUM_RAYS];
 double target_x[N_DRONES], target_y[N_DRONES], target_z[N_DRONES];
+
+// Internal PRNG state for reproducible environments
 static unsigned int env_rand_state = 1;
 
+/**
+ * @brief Fast, localized pseudo-random number generator.
+ * @return A random 15-bit integer.
+ */
 static int env_rand(void) {
     env_rand_state = env_rand_state * 1103515245 + 12345;
     return (unsigned int)(env_rand_state / 65536) % 32768;
 }
 
-// Helper: Generates a random double between min and max
+/**
+ * @brief Generates a random double within a given range.
+ * @param min The lower bound.
+ * @param max The upper bound.
+ * @return A uniform random double in [min, max].
+ */
 static double env_rand_double(double min, double max) {
     return min + ((double)env_rand() / 32767.0) * (max - min);
 }
+
+// --- INITIALIZATION ---
+
+void init_lidar(void) {
+    double phi = M_PI * (3.0 - sqrt(5.0)); // Golden angle in radians
+
+    for (int i = 0; i < NUM_RAYS; i++) {
+        double y = 1.0 - (i / (float)(NUM_RAYS - 1)) * 2.0; // From 1 to -1
+        double radius = sqrt(1 - y * y);
+        double theta = phi * i;
+
+        double x = cos(theta) * radius;
+        double z = sin(theta) * radius;
+
+        // Normalize
+        double mag = sqrt(x*x + y*y + z*z);
+        rays[i].dir_x = x / mag;
+        rays[i].dir_y = y / mag;
+        rays[i].dir_z = z / mag;
+    }
+}
+
+// --- ENVIRONMENT GENERATION ---
 
 void generate_random_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
     // 1. Lock the Random Number Generator to the specific Generation Seed
@@ -45,7 +85,7 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
     map_y_max = env_rand_double(40.0, 50.0); // Altitude ceiling
 
     // 3. Randomize Mountains (Amount, Size, Position)
-    num_active_obstacles = 2 + (env_rand() % 5); // 2 to 6 mountains
+    num_active_obstacles = 2 + (env_rand() % 5);
     
     for (int i = 0; i < num_active_obstacles; i++) {
         obstacles[i].radius = env_rand_double(8.0, 25.0);
@@ -100,15 +140,17 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
     for (int d = 0; d < num_active_drones; d++) {
         int safe_target = 0;
         while (!safe_target) {
-            target_x[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
-            target_z[d] = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
-            target_y[d] = env_rand_double(10.0, 15.0);
+            target_x[d] = env_rand_double(map_x_min + 5.0, map_x_max - 5.0);
+            target_y[d] = env_rand_double(5.0, map_y_max - 5.0);
+            target_z[d] = env_rand_double(map_z_min + 5.0, map_z_max - 5.0);
 
             safe_target = 1;
+            // Verify target is not inside a mountain
             for (int i = 0; i < num_active_obstacles; i++) {
                 double dx = target_x[d] - obstacles[i].x;
                 double dy = target_y[d] - obstacles[i].y;
                 double dz = target_z[d] - obstacles[i].z;
+                
                 double safe_distance = obstacles[i].radius + 5.0;
                 if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
                     safe_target = 0; 
@@ -119,48 +161,35 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
     }
 }
 
-void init_lidar(void) {
-    // Distribute rays uniformly in 3D using Fibonacci Sphere
-    double phi = M_PI * (3.0 - sqrt(5.0)); // Golden angle
+// --- SENSOR LOGIC ---
 
-    for (int i = 0; i < NUM_RAYS; i++) {
-        // Y goes from 1 to -1 (Altitude axis)
-        double y = 1.0 - (i / (double)(NUM_RAYS - 1)) * 2.0; 
-        double radius = sqrt(1.0 - y * y);
-        
-        double theta = phi * i;
-        
-        double x = cos(theta) * radius;
-        double z = sin(theta) * radius;
-
-        // Store the normalized direction vector
-        rays[i].dir_x = x;
-        rays[i].dir_y = y;
-        rays[i].dir_z = z;
-    }
-}
-
-// Computes the exact distance to the closest hit for a single ray
-static double shoot_single_ray(int drone_index, double ox, double oy, double oz, double dx, double dy, double dz, double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], int active[N_DRONES]) {
+/**
+ * @brief Performs analytic Ray-Sphere and Ray-Plane intersections.
+ *
+ * Casts a single ray from the drone's position in a specified direction.
+ * It checks for intersections against static obstacles, other active drones,
+ * and the bounding box of the map. Returns the distance to the closest hit.
+ *
+ * @return Distance to the nearest collision, or MAX_LIDAR_RANGE if no hit.
+ */
+static double shoot_single_ray(int drone_index, double ox, double oy, double oz, 
+                               double dx, double dy, double dz, 
+                               double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], 
+                               int active[N_DRONES]) {
+    
     double min_dist = MAX_LIDAR_RANGE;
 
-    // 1. Check Intersection with 3D Obstacles
+    // 1. Check Intersection with Spherical Mountains
     for (int i = 0; i < num_active_obstacles; i++) {
         double lx = obstacles[i].x - ox;
         double ly = obstacles[i].y - oy;
         double lz = obstacles[i].z - oz;
 
-        // --- NUOVO CONTROLLO: COLLISIONE INTERNA ---
         // Squared distance from drone to obstacle center
         double L2 = (lx*lx + ly*ly + lz*lz);
         double radius2 = obstacles[i].radius * obstacles[i].radius;
 
-        // If drone is completely inside the obstacle, distance is 0
-        if (L2 <= radius2) {
-            return 0.0; // Collision! Immediate return.
-        }
-        // -------------------------------------------
-
+        // Projection of vector L onto the ray direction (dot product)
         double tca = lx * dx + ly * dy + lz * dz;
 
         // If tca < 0, the obstacle is strictly behind the ray
@@ -191,7 +220,7 @@ static double shoot_single_ray(int drone_index, double ox, double oy, double oz,
         double radius2 = DRONE_RADIUS * DRONE_RADIUS;
 
         if (L2 <= radius2) {
-            return 0.0; 
+            return 0.0; // The ray originated inside another drone
         }
 
         double tca = lx * dx + ly * dy + lz * dz;
@@ -250,6 +279,7 @@ void print_lidar_rays(double distances[NUM_RAYS], double current_time, double dx
     }
     printf("----------------------------------------------------------\n");
 }
+
 void export_environment(const char* filename) {
     FILE* f = fopen(filename, "w");
     if (f == NULL) {
@@ -274,7 +304,10 @@ void export_environment(const char* filename) {
     
     fclose(f);
 }
-void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
+
+// --- DYNAMIC MISSION FUNCTIONS ---
+
+void generate_mission_environment(unsigned int seed, int req_drones, int req_obstacles, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
     env_rand_state = seed;
     map_x_max = env_rand_double(40.0, 80.0);
     map_x_min = -map_x_max;
@@ -283,7 +316,11 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
     map_y_min = 0.0;
     map_y_max = env_rand_double(40.0, 50.0);
 
-    num_active_obstacles = 2 + (env_rand() % 5);
+    // Dynamic obstacle clamping based on mission args
+    num_active_obstacles = req_obstacles; 
+    if (num_active_obstacles < 0) num_active_obstacles = 2 + (env_rand() % 5); 
+    if (num_active_obstacles > MAX_OBSTACLES) num_active_obstacles = MAX_OBSTACLES;
+
     for (int i = 0; i < num_active_obstacles; i++) {
         obstacles[i].radius = env_rand_double(8.0, 25.0);
         obstacles[i].x = env_rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
@@ -291,8 +328,12 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
         obstacles[i].y = 0.0;
     }
 
-    num_active_drones = 1 + (env_rand() % N_DRONES);
+    // Dynamic drone clamping based on mission args
+    num_active_drones = req_drones; 
+    if (num_active_drones <= 0) num_active_drones = 1 + (env_rand() % N_DRONES); 
+    if (num_active_drones > N_DRONES) num_active_drones = N_DRONES;
 
+    // Secure spawning strictly on the seabed
     for (int d = 0; d < num_active_drones; d++) {
         int safe_spawn = 0;
         while (!safe_spawn) {
@@ -330,16 +371,19 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
 void generate_local_target(double cx, double cy, double cz, double* tx, double* ty, double* tz, double radius) {
     int safe_target = 0;
     while (!safe_target) {
+        // Offset the target relative to the current drone position
         double ox = env_rand_double(-radius, radius);
         double oy = env_rand_double(-radius, radius);
         double oz = env_rand_double(-radius, radius);
         
+        // Ensure the offset is strictly within the requested radius (spherical volume)
         if (ox*ox + oy*oy + oz*oz > radius*radius) continue;
 
         *tx = cx + ox;
         *ty = cy + oy;
         *tz = cz + oz;
 
+        // Clamp target strictly within map boundaries to avoid impossible goals
         if (*tx < map_x_min + 5.0) *tx = map_x_min + 5.0;
         if (*tx > map_x_max - 5.0) *tx = map_x_max - 5.0;
         if (*ty < 5.0) *ty = 5.0; 
@@ -348,6 +392,7 @@ void generate_local_target(double cx, double cy, double cz, double* tx, double* 
         if (*tz > map_z_max - 5.0) *tz = map_z_max - 5.0;
 
         safe_target = 1;
+        // Verify the new target is not inside a static mountain
         for (int i = 0; i < num_active_obstacles; i++) {
             double dx = *tx - obstacles[i].x;
             double dy = *ty - obstacles[i].y;

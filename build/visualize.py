@@ -1,4 +1,4 @@
-import numpy as np
+﻿import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import csv
@@ -14,7 +14,7 @@ MAX_LIDAR_RANGE = 20.0
 BOUNDS = {}
 OBSTACLES = []
 TARGETS = []
-N_DRONES = 4
+N_DRONES = 5
 
 def load_environment(filename):
     global BOUNDS, OBSTACLES
@@ -312,3 +312,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

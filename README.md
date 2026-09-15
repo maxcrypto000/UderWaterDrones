@@ -54,7 +54,7 @@ Questa modalità permette di testare la Rete Neurale pre-addestrata su uno scena
 
 ### 3. Fase di Missione Dinamica (Mission)
 `powershell
-.\DroneTest.exe mission
+.\DroneTest.exe mission [NUM_DRONI] [NUM_MONTAGNE]
 `
 Questa modalità lancia il simulatore avanzato governato da una **Macchina a Stati Finiti**.
 - Utilizza **est_model.bin** per guidare i droni.
@@ -90,3 +90,4 @@ python visualize_mission.py
 
 ---
 *Progetto sviluppato da Massimiliano.*
+

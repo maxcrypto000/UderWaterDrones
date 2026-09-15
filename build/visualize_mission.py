@@ -1,4 +1,4 @@
-
+﻿
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ TELEMETRY_FILE = "mission_telemetry.csv"
 ENVIRONMENT_FILE = "mission_environment.csv"
 NUM_RAYS = 64
 MAX_LIDAR_RANGE = 20.0
+SHOW_LIDAR = False  # Set to True to display LIDAR rays
 
 # --- Global State Variables ---
 BOUNDS = {}
@@ -262,8 +263,11 @@ def main():
         tgt_marker, = ax.plot([], [], [], '*', color='gold', markersize=15, markeredgecolor='black')
         target_markers.append(tgt_marker)
         
-        drone_rays = [ax.plot([], [], [], color=c, alpha=0.1, linewidth=1)[0] for _ in range(NUM_RAYS)]
-        ray_lines.append(drone_rays)
+        if SHOW_LIDAR:
+            drone_rays = [ax.plot([], [], [], color=c, alpha=0.1, linewidth=1)[0] for _ in range(NUM_RAYS)]
+            ray_lines.append(drone_rays)
+        else:
+            ray_lines.append([])
 
     ax.set_xlabel('X (Horizontal) [m]')
     ax.set_ylabel('Z (Depth) [m]')
@@ -310,18 +314,19 @@ def main():
             bat_strs.append(f"D{d}: {bat:.0f}% [{state_str}]")
             
             # Raycasting visuals
-            for i, ray_dir in enumerate(rays_dirs):
-                hit_dist = compute_ray_hit(d, pos, ray_dir, all_drones_pos)
-                end_pos = pos + ray_dir * hit_dist
-                ray_lines[d][i].set_data([pos[0], end_pos[0]], [pos[2], end_pos[2]])
-                ray_lines[d][i].set_3d_properties([pos[1], end_pos[1]])
-                if hit_dist < MAX_LIDAR_RANGE:
-                    ray_lines[d][i].set_color('red')
-                    ray_lines[d][i].set_alpha(0.8)
-                else:
-                    ray_lines[d][i].set_color(colors[d % len(colors)])
-                    ray_lines[d][i].set_alpha(0.1)
-                artists.append(ray_lines[d][i])
+            if SHOW_LIDAR:
+                for i, ray_dir in enumerate(rays_dirs):
+                    hit_dist = compute_ray_hit(d, pos, ray_dir, all_drones_pos)
+                    end_pos = pos + ray_dir * hit_dist
+                    ray_lines[d][i].set_data([pos[0], end_pos[0]], [pos[2], end_pos[2]])
+                    ray_lines[d][i].set_3d_properties([pos[1], end_pos[1]])
+                    if hit_dist < MAX_LIDAR_RANGE:
+                        ray_lines[d][i].set_color('red')
+                        ray_lines[d][i].set_alpha(0.8)
+                    else:
+                        ray_lines[d][i].set_color(colors[d % len(colors)])
+                        ray_lines[d][i].set_alpha(0.1)
+                    artists.append(ray_lines[d][i])
                 
         bat_text = " | ".join(bat_strs)
         ax.set_title(f"Dynamic Mission | T = {times[frame]:.2f}s\n{bat_text}")
@@ -335,3 +340,5 @@ def main():
 if __name__ == '__main__':
     # Strip leading/trailing whitespaces if file accidentally saves with them
     main()
+
+

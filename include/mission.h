@@ -43,6 +43,7 @@ typedef enum {
  * @param fmus Array of initialized FMI simulation instances (one per drone).
  * @param model_filename Path to the binary file containing the pre-trained neural network weights.
  */
-void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename);
+void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles);
 
 #endif // MISSION_H
+
