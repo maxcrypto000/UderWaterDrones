@@ -1,4 +1,4 @@
-#ifndef EVOLUTION_H
+﻿#ifndef EVOLUTION_H
 #define EVOLUTION_H
 
 #include <fmilib.h>

@@ -1,4 +1,4 @@
-#include "evolution.h"
+﻿#include "evolution.h"
 #include "environment.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -399,7 +399,7 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
 
     // 2. Generates a completely new map to test generalization
     // Using the current time as seed guarantees a new scenario every time
-    unsigned int test_seed = 137; //(unsigned int)time(NULL); 
+    unsigned int test_seed = 1372; //(unsigned int)time(NULL); 
     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
     generate_random_environment(test_seed, start_x, start_y, start_z);

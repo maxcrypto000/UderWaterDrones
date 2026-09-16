@@ -274,7 +274,9 @@ void export_environment(const char* filename) {
     
     fclose(f);
 }
-void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
+// --- DYNAMIC MISSION FUNCTIONS ---
+
+void generate_mission_environment(unsigned int seed, int req_drones, int req_obstacles, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
     env_rand_state = seed;
     map_x_max = env_rand_double(40.0, 80.0);
     map_x_min = -map_x_max;
@@ -283,7 +285,11 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
     map_y_min = 0.0;
     map_y_max = env_rand_double(40.0, 50.0);
 
-    num_active_obstacles = 2 + (env_rand() % 5);
+    // Dynamic obstacle clamping based on mission args
+    num_active_obstacles = req_obstacles; 
+    if (num_active_obstacles < 0) num_active_obstacles = 2 + (env_rand() % 5); 
+    if (num_active_obstacles > MAX_OBSTACLES) num_active_obstacles = MAX_OBSTACLES;
+
     for (int i = 0; i < num_active_obstacles; i++) {
         obstacles[i].radius = env_rand_double(8.0, 25.0);
         obstacles[i].x = env_rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
@@ -291,8 +297,12 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
         obstacles[i].y = 0.0;
     }
 
-    num_active_drones = 1 + (env_rand() % N_DRONES);
+    // Dynamic drone clamping based on mission args
+    num_active_drones = req_drones; 
+    if (num_active_drones <= 0) num_active_drones = 1 + (env_rand() % N_DRONES); 
+    if (num_active_drones > N_DRONES) num_active_drones = N_DRONES;
 
+    // Secure spawning strictly on the seabed
     for (int d = 0; d < num_active_drones; d++) {
         int safe_spawn = 0;
         while (!safe_spawn) {
@@ -330,16 +340,19 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
 void generate_local_target(double cx, double cy, double cz, double* tx, double* ty, double* tz, double radius) {
     int safe_target = 0;
     while (!safe_target) {
+        // Offset the target relative to the current drone position
         double ox = env_rand_double(-radius, radius);
         double oy = env_rand_double(-radius, radius);
         double oz = env_rand_double(-radius, radius);
         
+        // Ensure the offset is strictly within the requested radius (spherical volume)
         if (ox*ox + oy*oy + oz*oz > radius*radius) continue;
 
         *tx = cx + ox;
         *ty = cy + oy;
         *tz = cz + oz;
 
+        // Clamp target strictly within map boundaries to avoid impossible goals
         if (*tx < map_x_min + 5.0) *tx = map_x_min + 5.0;
         if (*tx > map_x_max - 5.0) *tx = map_x_max - 5.0;
         if (*ty < 5.0) *ty = 5.0; 
@@ -348,6 +361,7 @@ void generate_local_target(double cx, double cy, double cz, double* tx, double* 
         if (*tz > map_z_max - 5.0) *tz = map_z_max - 5.0;
 
         safe_target = 1;
+        // Verify the new target is not inside a static mountain
         for (int i = 0; i < num_active_obstacles; i++) {
             double dx = *tx - obstacles[i].x;
             double dy = *ty - obstacles[i].y;

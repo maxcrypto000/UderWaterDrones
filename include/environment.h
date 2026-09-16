@@ -51,11 +51,13 @@ void export_environment(const char* filename);
  * initial collisions with randomly generated mountainous obstacles.
  *
  * @param seed Random seed for reproducible generation.
+ * @param req_drones Desired number of active drones (clamps to N_DRONES).
+ * @param req_obstacles Desired number of static mountains (clamps to MAX_OBSTACLES).
  * @param out_startX Array to store the generated X starting coordinates.
  * @param out_startY Array to store the generated Y starting coordinates.
  * @param out_startZ Array to store the generated Z starting coordinates.
  */
-void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
+void generate_mission_environment(unsigned int seed, int req_drones, int req_obstacles, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
 
 /**
  * @brief Generates a localized, obstacle-free target waypoint for a drone.

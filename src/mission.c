@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file mission.c
  * @brief Implementation of the dynamic mission simulation and drone state machine.
  */
@@ -28,7 +28,7 @@
 /** @brief Maximum engine thrust (in Newtons) applied to each axis. */
 #define MAX_THRUST 20.0 
 
-void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
+void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles) {
     NeuralNetwork nn;
     
     // 1. Load the pre-trained neural network weights
@@ -40,11 +40,11 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
     printf("\n>>> MISSION SYSTEM INITIALIZED WITH MODEL %s <<<\n", model_filename);
 
     // 2. Generate the mission environment
-    unsigned int mission_seed = 404; 
+    unsigned int mission_seed = 2220; 
     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
     // Generates an environment where starting positions are firmly on the seabed
-    generate_mission_environment(mission_seed, start_x, start_y, start_z);
+    generate_mission_environment(mission_seed, req_drones, req_obstacles, start_x, start_y, start_z);
     export_environment("mission_environment.csv");
 
     printf("Mission Map Generated (Seed: %u)\n", mission_seed);
@@ -153,8 +153,8 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
             // --- STATE MACHINE TRANSITION LOGIC ---
             
             if (state[d] == STATE_SEEK_TARGET) {
-                // If drone has arrived at its local target (within 5.0m threshold)
-                if (current_distance < 5.0) {
+                // If drone has arrived at its local target 
+                if (current_distance < 7.0) {
                     if (current_battery[d] < BATTERY_LOW_THRESHOLD) {
                         // Battery is too low. Abort mission and return to base.
                         state[d] = STATE_RETURN_BASE;
@@ -171,7 +171,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
             } 
             else if (state[d] == STATE_RETURN_BASE) {
                 // If drone has arrived at the charging base
-                if (current_distance < 5.0) {
+                if (current_distance < 10.0) {
                     state[d] = STATE_RECHARGING;
                     printf("T=%.1f | Drone %d arrived at BASE. Recharging...\n", current_time, d);
                 }

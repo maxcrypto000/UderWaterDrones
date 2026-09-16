@@ -61,7 +61,11 @@ int main(int argc, char* argv[]) {
 
     // --- EXECUTION BRANCH ---
     if (run_mission) {
-        es_mission(fmus, "best_model.bin");
+        int req_drones = -1;
+        int req_obstacles = -1;
+        if (argc >= 3) req_drones = atoi(argv[2]);
+        if (argc >= 4) req_obstacles = atoi(argv[3]);
+        es_mission(fmus, "best_model.bin", req_drones, req_obstacles);
     } else if (run_test) {
         // Runs the pre-trained neural network on a random map
         es_test(fmus, "best_model.bin");

@@ -1,0 +1,1363 @@
+﻿diff --git a/include/environment.h b/include/environment.h
+index 4901404..fbe24ff 100644
+--- a/include/environment.h
++++ b/include/environment.h
+@@ -1,46 +1,121 @@
++/**
++ * @file environment.h
++ * @brief Environment generation and LIDAR sensor simulation for the drone swarm.
++ *
++ * This module is responsible for defining the physical 3D world in which the drones 
++ * operate. It handles procedural generation of boundaries, static obstacles (mountains),
++ * and random target placement. Furthermore, it implements the math for a volumetric 
++ * LIDAR sensor via raycasting to detect obstacles and other drones.
++ */
++
+ #ifndef ENVIRONMENT_H
+ #define ENVIRONMENT_H
+ 
+ // --- LIDAR SETTINGS ---
++
++/** @brief Maximum range of the LIDAR sensor in meters. */
+ #define MAX_LIDAR_RANGE 20.0
++
++/** @brief Total number of rays cast per drone per step (Fibonacci Sphere). */
+ #define NUM_RAYS 64
+-#define MAX_OBSTACLES 10 // Maximum memory allocation for mountains
+ 
++/** @brief Maximum number of static obstacles (mountains) allowed in the environment. */
++#define MAX_OBSTACLES 10 
++
++/** @brief Maximum number of active drones in the swarm. */
+ #define N_DRONES 5
++
++/** @brief Physical radius of each drone, used for drone-to-drone collision detection. */
+ #define DRONE_RADIUS 1.0
+ 
++/**
++ * @struct Obstacle3D
++ * @brief Defines a static spherical (or hemispherical) obstacle.
++ */
+ typedef struct {
+-    double x;
+-    double y;
+-    double z;
+-    double radius;
++    double x;      /**< X coordinate of the obstacle center. */
++    double y;      /**< Y coordinate of the obstacle center. */
++    double z;      /**< Z coordinate of the obstacle center. */
++    double radius; /**< Radius of the obstacle. */
+ } Obstacle3D;
+ 
++/**
++ * @struct LidarRay
++ * @brief Defines a normalized directional vector for a single LIDAR ray.
++ */
+ typedef struct {
+-    double dir_x;
+-    double dir_y;
+-    double dir_z;
++    double dir_x; /**< Normalized X direction. */
++    double dir_y; /**< Normalized Y direction. */
++    double dir_z; /**< Normalized Z direction. */
+ } LidarRay;
+ 
+ // --- GLOBAL MAP VARIABLES ---
++
+ extern double map_x_min, map_x_max;
+ extern double map_y_min, map_y_max;
+ extern double map_z_min, map_z_max;
++
+ extern int num_active_obstacles;
+ extern int num_active_drones;
++
++/** @brief Global array containing the current dynamic target for each drone. */
+ extern double target_x[N_DRONES], target_y[N_DRONES], target_z[N_DRONES];
++
++/** @brief Global array storing the currently spawned static obstacles. */
+ extern Obstacle3D obstacles[MAX_OBSTACLES];
+ 
+ // --- FUNCTIONS ---
++
++/**
++ * @brief Initializes the LIDAR ray directions using a Fibonacci Sphere algorithm.
++ * 
++ * Generates an almost perfectly uniform distribution of points across a sphere,
++ * which serves as the directional vectors for the LIDAR sensor.
++ */
+ void init_lidar(void);
++
++/**
++ * @brief Computes all LIDAR ray distances for a specific drone.
++ *
++ * Casts NUM_RAYS against map bounds, static obstacles, and other drones.
++ *
++ * @param drone_index The index of the drone casting the rays.
++ * @param drone_x X coordinate of the drone.
++ * @param drone_y Y coordinate of the drone.
++ * @param drone_z Z coordinate of the drone.
++ * @param current_x Array of all drone X coordinates.
++ * @param current_y Array of all drone Y coordinates.
++ * @param current_z Array of all drone Z coordinates.
++ * @param active Array indicating which drones are active.
++ * @param distances Output array to store the intersection distances.
++ */
+ void compute_lidar_rays(int drone_index, double drone_x, double drone_y, double drone_z, double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], int active[N_DRONES], double distances[NUM_RAYS]);
++
++/**
++ * @brief Prints the status of the LIDAR rays to the console (for debugging).
++ */
+ void print_lidar_rays(double distances[NUM_RAYS], double current_time, double dx, double dy, double dz);
+ 
+-// NEW: Procedural Environment Generator
++/**
++ * @brief Procedurally generates a random training environment.
++ *
++ * Creates random bounds, places random mountains, and spawns drones safely
++ * in mid-air ensuring no initial collisions occur. Used during ES training.
++ *
++ * @param seed Random seed for reproducible generation.
++ * @param out_startX Output array for drone X spawn coordinates.
++ * @param out_startY Output array for drone Y spawn coordinates.
++ * @param out_startZ Output array for drone Z spawn coordinates.
++ */
+ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
+-// Exports the generated environment to a file for Python visualization
++
++/**
++ * @brief Exports the generated map and obstacles to a CSV file.
++ *
++ * @param filename Destination CSV file path.
++ */
+ void export_environment(const char* filename);
+-#endif
++
+ // --- DYNAMIC MISSION ---
+ 
+ /**
+@@ -51,11 +126,13 @@ void export_environment(const char* filename);
+  * initial collisions with randomly generated mountainous obstacles.
+  *
+  * @param seed Random seed for reproducible generation.
++ * @param req_drones Desired number of active drones (clamps to N_DRONES).
++ * @param req_obstacles Desired number of static mountains (clamps to MAX_OBSTACLES).
+  * @param out_startX Array to store the generated X starting coordinates.
+  * @param out_startY Array to store the generated Y starting coordinates.
+  * @param out_startZ Array to store the generated Z starting coordinates.
+  */
+-void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
++void generate_mission_environment(unsigned int seed, int req_drones, int req_obstacles, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
+ 
+ /**
+  * @brief Generates a localized, obstacle-free target waypoint for a drone.
+@@ -73,3 +150,5 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
+  * @param radius The maximum radial distance for the new target.
+  */
+ void generate_local_target(double cx, double cy, double cz, double* tx, double* ty, double* tz, double radius);
++
++#endif
+diff --git a/include/evolution.h b/include/evolution.h
+index 1541792..1ca4485 100644
+--- a/include/evolution.h
++++ b/include/evolution.h
+@@ -1,3 +1,13 @@
++´╗┐/**
++ * @file evolution.h
++ * @brief Definition of the Evolution Strategy algorithm for Neural Network training.
++ *
++ * This module orchestrates the training phase of the neural networks using a 
++ * gradient-free optimization algorithm (OpenAI Evolution Strategy). It perturbates
++ * the weights, runs parallel simulations (Monte Carlo), evaluates fitness, and 
++ * updates the master network.
++ */
++
+ #ifndef EVOLUTION_H
+ #define EVOLUTION_H
+ 
+@@ -9,37 +19,76 @@
+ // EVOLUTION STRATEGY HYPERPARAMETERS (Algorithm 1 - OpenAI)
+ // ============================================================================
+ 
+-// Number of "clones" (perturbed neural networks) evaluated in each generation.
+-// A larger population stabilizes the gradient, but requires more computation.
++/** 
++ * @brief Number of "clones" (perturbed neural networks) evaluated in each generation.
++ * 
++ * A larger population stabilizes the gradient estimate via Monte Carlo, 
++ * but requires proportionally more computation time.
++ */
+ #define POPULATION_SIZE 100
+ 
+-// Total number of generations (weight update cycles) before stopping.
++/** 
++ * @brief Total number of generations (weight update epochs) before stopping.
++ */
+ #define GENERATIONS 1000
+ 
+-// Number of different environments each neural network is evaluated on (Monte Carlo)
++/** 
++ * @brief Number of different procedural environments each clone is evaluated on.
++ * 
++ * Averaging fitness over multiple maps prevents the network from overfitting 
++ * a single specific map geometry (Monte Carlo sampling).
++ */
+ #define MONTECARLO_SAMPLES 5
+ 
++/** 
++ * @brief Flag to enable immediate episode termination if ANY drone crashes.
++ * 
++ * Used for strict cooperative swarm training. Set to 0 to evaluate drones independently.
++ */
+ #define ENABLE_TEAM_CRASH 0
+ 
+-
+-// Standard deviation (Sigma) for extracting Gaussian noise.
+-// Controls how much we "explore" the parameter space. If too low, 
+-// the network learns nothing new. If too high, the behavior is pure chaos.
++/** 
++ * @brief Standard deviation (Sigma) for extracting Gaussian noise.
++ * 
++ * Controls how aggressively we "explore" the parameter space (jittering).
++ * - If too low: The network learns nothing new (vanishing updates).
++ * - If too high: The behavioral changes are pure chaos and gradient is lost.
++ */
+ #define SIGMA 0.1        
+ 
+-// Learning rate (Alpha). 
+-// Determines how heavily we update the original network (base_nn) 
+-// in the direction of the clones that achieved the best scores.
++/** 
++ * @brief Learning rate (Alpha) for Stochastic Gradient Descent.
++ * 
++ * Determines how heavily we update the original master network (base_nn) 
++ * in the direction of the clones that achieved the best fitness scores.
++ */
+ #define LEARNING_RATE 0.02
+ 
+ // ============================================================================
+ // EXPOSED FUNCTIONS
+ // ============================================================================
+ 
+-// Starts the Evolution Strategy generational loop.
+-// Takes as input the array of instantiated FMUs.
++/**
++ * @brief Starts the Evolution Strategy generational loop.
++ *
++ * This is the core training routine. It runs for GENERATIONS epochs, spawns
++ * POPULATION_SIZE variants, executes run_episode() for each, normalizes fitness,
++ * updates the master weights, and finally saves the best model to disk.
++ *
++ * @param fmus Array of initialized FMU instances (one per drone).
++ */
+ void es_train(fmi2_import_t* fmus[N_DRONES]);
+ 
+-// Testa una Rete Neurale precedentemente addestrata
++/**
++ * @brief Tests a previously trained Neural Network in a new random environment.
++ *
++ * Inference-only mode. It loads the weights from the binary file, generates
++ * a single random map, and flies the drones without updating the weights.
++ * Telemetry is recorded for visualization.
++ *
++ * @param fmus Array of initialized FMU instances (one per drone).
++ * @param model_filename Path to the trained .bin model file.
++ */
+ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename);
+-#endif
+\ No newline at end of file
++
++#endif // EVOLUTION_H
+diff --git a/include/mission.h b/include/mission.h
+index 88dde92..088ec84 100644
+--- a/include/mission.h
++++ b/include/mission.h
+@@ -43,6 +43,7 @@ typedef enum {
+  * @param fmus Array of initialized FMI simulation instances (one per drone).
+  * @param model_filename Path to the binary file containing the pre-trained neural network weights.
+  */
+-void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename);
++void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles);
+ 
+ #endif // MISSION_H
++
+diff --git a/include/neural_network.h b/include/neural_network.h
+index caa9c14..f5e347b 100644
+--- a/include/neural_network.h
++++ b/include/neural_network.h
+@@ -1,33 +1,85 @@
++/**
++ * @file neural_network.h
++ * @brief Definition of the Artificial Neural Network architecture for drone control.
++ *
++ * This module defines a Feed-Forward Multilayer Perceptron (MLP) used to
++ * process environmental inputs (Lidar, relative target position, and battery)
++ * to output thrust commands for the drone's physical engine (FMU).
++ */
++
+ #ifndef NEURAL_NETWORK_H
+ #define NEURAL_NETWORK_H
+ 
+ // --- ARCHITECTURE DEFINITION ---
+-// Total inputs: 64 Lidar rays + 3 relative target coordinates (dx, dy, dz) + 1 battery
++
++/** 
++ * @brief Total number of input nodes.
++ * Breakdown: 64 Lidar rays + 3 relative target coordinates (dx, dy, dz) + 1 battery level (normalized).
++ */
+ #define NN_INPUT_SIZE 68  
++
++/** @brief Number of nodes in the single hidden layer. */
+ #define NN_HIDDEN_SIZE 32
+-#define NN_OUTPUT_SIZE 3  // Thrust X, Thrust Y, Thrust Z
+ 
+-// The Neural Network structure holds all the weights and biases
++/** @brief Number of output nodes (Thrust X, Thrust Y, Thrust Z). */
++#define NN_OUTPUT_SIZE 3  
++
++/**
++ * @struct NeuralNetwork
++ * @brief Encapsulates the entire weight and bias structure of the MLP.
++ *
++ * It uses flat 2D arrays for weights and 1D arrays for biases to guarantee 
++ * contiguous memory allocation, maximizing caching performance during inference.
++ */
+ typedef struct {
+-    // Weights and biases for Input -> Hidden layer
+-    double W1[NN_HIDDEN_SIZE][NN_INPUT_SIZE];
+-    double b1[NN_HIDDEN_SIZE];
++    // Input to Hidden Layer (Layer 1)
++    double W1[NN_HIDDEN_SIZE][NN_INPUT_SIZE];   /**< Weight matrix mapping inputs to hidden nodes. */
++    double b1[NN_HIDDEN_SIZE];                  /**< Bias vector for hidden nodes. */
+ 
+-    // Weights and biases for Hidden -> Output layer
+-    double W2[NN_OUTPUT_SIZE][NN_HIDDEN_SIZE];
+-    double b2[NN_OUTPUT_SIZE];
++    // Hidden to Output Layer (Layer 2)
++    double W2[NN_OUTPUT_SIZE][NN_HIDDEN_SIZE];  /**< Weight matrix mapping hidden nodes to outputs. */
++    double b2[NN_OUTPUT_SIZE];                  /**< Bias vector for output nodes. */
+ } NeuralNetwork;
+ 
+ // --- FUNCTIONS ---
+ 
+-// Initializes the network with random weights (Used for Generation 0)
++/**
++ * @brief Initializes the neural network with random weights and biases.
++ * 
++ * Typically used to seed the initial generation (Gen 0) of the Evolution Strategy.
++ * Values are uniformly distributed in the range [-1.0, 1.0].
++ *
++ * @param nn Pointer to the NeuralNetwork instance to initialize.
++ */
+ void nn_init_random(NeuralNetwork* nn);
+ 
+-// Performs the feedforward pass: calculates outputs based on inputs
++/**
++ * @brief Performs the forward propagation pass.
++ *
++ * Calculates the network outputs based on the provided inputs by computing
++ * dot products and applying the tanh activation function at each layer.
++ *
++ * @param nn Pointer to the trained NeuralNetwork instance.
++ * @param inputs Array of normalized input values [Size: NN_INPUT_SIZE].
++ * @param outputs Array to store the normalized output values [-1.0, 1.0] [Size: NN_OUTPUT_SIZE].
++ */
+ void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], double outputs[NN_OUTPUT_SIZE]);
+-// Salva i pesi della rete su un file binario
++
++/**
++ * @brief Dumps the memory structure of the Neural Network to a binary file.
++ *
++ * @param nn Pointer to the NeuralNetwork instance.
++ * @param filename Destination binary file path.
++ */
+ void nn_save(NeuralNetwork* nn, const char* filename);
+ 
+-// Carica i pesi della rete da un file binario (ritorna 1 se successo, 0 se errore)
++/**
++ * @brief Loads a Neural Network memory structure from a binary file.
++ *
++ * @param nn Pointer to the NeuralNetwork instance to populate.
++ * @param filename Source binary file path.
++ * @return 1 on success, 0 if the file could not be read.
++ */
+ int nn_load(NeuralNetwork* nn, const char* filename);
+-#endif
+\ No newline at end of file
++
++#endif // NEURAL_NETWORK_H
+diff --git a/src/environment.c b/src/environment.c
+index 7858bee..7afeaf9 100644
+--- a/src/environment.c
++++ b/src/environment.c
+@@ -1,3 +1,8 @@
++/**
++ * @file environment.c
++ * @brief Implementation of the environment generation and LIDAR sensor logic.
++ */
++
+ #include "environment.h"
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -7,7 +12,8 @@
+ #define M_PI 3.14159265358979323846
+ #endif
+ 
+-// Define the global map variables
++// --- GLOBAL VARIABLES ---
++
+ double map_x_min = -50.0;
+ double map_x_max =  50.0;
+ double map_y_min =   0.0;
+@@ -20,18 +26,52 @@ int num_active_drones = 1;
+ Obstacle3D obstacles[MAX_OBSTACLES];
+ static LidarRay rays[NUM_RAYS];
+ double target_x[N_DRONES], target_y[N_DRONES], target_z[N_DRONES];
++
++// Internal PRNG state for reproducible environments
+ static unsigned int env_rand_state = 1;
+ 
++/**
++ * @brief Fast, localized pseudo-random number generator.
++ * @return A random 15-bit integer.
++ */
+ static int env_rand(void) {
+     env_rand_state = env_rand_state * 1103515245 + 12345;
+     return (unsigned int)(env_rand_state / 65536) % 32768;
+ }
+ 
+-// Helper: Generates a random double between min and max
++/**
++ * @brief Generates a random double within a given range.
++ * @param min The lower bound.
++ * @param max The upper bound.
++ * @return A uniform random double in [min, max].
++ */
+ static double env_rand_double(double min, double max) {
+     return min + ((double)env_rand() / 32767.0) * (max - min);
+ }
+ 
++// --- INITIALIZATION ---
++
++void init_lidar(void) {
++    double phi = M_PI * (3.0 - sqrt(5.0)); // Golden angle in radians
++
++    for (int i = 0; i < NUM_RAYS; i++) {
++        double y = 1.0 - (i / (float)(NUM_RAYS - 1)) * 2.0; // From 1 to -1
++        double radius = sqrt(1 - y * y);
++        double theta = phi * i;
++
++        double x = cos(theta) * radius;
++        double z = sin(theta) * radius;
++
++        // Normalize
++        double mag = sqrt(x*x + y*y + z*z);
++        rays[i].dir_x = x / mag;
++        rays[i].dir_y = y / mag;
++        rays[i].dir_z = z / mag;
++    }
++}
++
++// --- ENVIRONMENT GENERATION ---
++
+ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
+     // 1. Lock the Random Number Generator to the specific Generation Seed
+     env_rand_state = seed;
+@@ -45,7 +85,7 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
+     map_y_max = env_rand_double(40.0, 50.0); // Altitude ceiling
+ 
+     // 3. Randomize Mountains (Amount, Size, Position)
+-    num_active_obstacles = 2 + (env_rand() % 5); // 2 to 6 mountains
++    num_active_obstacles = 2 + (env_rand() % 5);
+     
+     for (int i = 0; i < num_active_obstacles; i++) {
+         obstacles[i].radius = env_rand_double(8.0, 25.0);
+@@ -100,15 +140,17 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
+     for (int d = 0; d < num_active_drones; d++) {
+         int safe_target = 0;
+         while (!safe_target) {
+-            target_x[d] = env_rand_double(map_x_min + 10.0, map_x_max - 10.0);
+-            target_z[d] = env_rand_double(map_z_min + 10.0, map_z_max - 10.0);
+-            target_y[d] = env_rand_double(10.0, 15.0);
++            target_x[d] = env_rand_double(map_x_min + 5.0, map_x_max - 5.0);
++            target_y[d] = env_rand_double(5.0, map_y_max - 5.0);
++            target_z[d] = env_rand_double(map_z_min + 5.0, map_z_max - 5.0);
+ 
+             safe_target = 1;
++            // Verify target is not inside a mountain
+             for (int i = 0; i < num_active_obstacles; i++) {
+                 double dx = target_x[d] - obstacles[i].x;
+                 double dy = target_y[d] - obstacles[i].y;
+                 double dz = target_z[d] - obstacles[i].z;
++                
+                 double safe_distance = obstacles[i].radius + 5.0;
+                 if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
+                     safe_target = 0; 
+@@ -119,48 +161,35 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
+     }
+ }
+ 
+-void init_lidar(void) {
+-    // Distribute rays uniformly in 3D using Fibonacci Sphere
+-    double phi = M_PI * (3.0 - sqrt(5.0)); // Golden angle
+-
+-    for (int i = 0; i < NUM_RAYS; i++) {
+-        // Y goes from 1 to -1 (Altitude axis)
+-        double y = 1.0 - (i / (double)(NUM_RAYS - 1)) * 2.0; 
+-        double radius = sqrt(1.0 - y * y);
+-        
+-        double theta = phi * i;
+-        
+-        double x = cos(theta) * radius;
+-        double z = sin(theta) * radius;
+-
+-        // Store the normalized direction vector
+-        rays[i].dir_x = x;
+-        rays[i].dir_y = y;
+-        rays[i].dir_z = z;
+-    }
+-}
+-
+-// Computes the exact distance to the closest hit for a single ray
+-static double shoot_single_ray(int drone_index, double ox, double oy, double oz, double dx, double dy, double dz, double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], int active[N_DRONES]) {
++// --- SENSOR LOGIC ---
++
++/**
++ * @brief Performs analytic Ray-Sphere and Ray-Plane intersections.
++ *
++ * Casts a single ray from the drone's position in a specified direction.
++ * It checks for intersections against static obstacles, other active drones,
++ * and the bounding box of the map. Returns the distance to the closest hit.
++ *
++ * @return Distance to the nearest collision, or MAX_LIDAR_RANGE if no hit.
++ */
++static double shoot_single_ray(int drone_index, double ox, double oy, double oz, 
++                               double dx, double dy, double dz, 
++                               double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], 
++                               int active[N_DRONES]) {
++    
+     double min_dist = MAX_LIDAR_RANGE;
+ 
+-    // 1. Check Intersection with 3D Obstacles
++    // 1. Check Intersection with Spherical Mountains
+     for (int i = 0; i < num_active_obstacles; i++) {
+         double lx = obstacles[i].x - ox;
+         double ly = obstacles[i].y - oy;
+         double lz = obstacles[i].z - oz;
+ 
+-        // --- NUOVO CONTROLLO: COLLISIONE INTERNA ---
+         // Squared distance from drone to obstacle center
+         double L2 = (lx*lx + ly*ly + lz*lz);
+         double radius2 = obstacles[i].radius * obstacles[i].radius;
+ 
+-        // If drone is completely inside the obstacle, distance is 0
+-        if (L2 <= radius2) {
+-            return 0.0; // Collision! Immediate return.
+-        }
+-        // -------------------------------------------
+-
++        // Projection of vector L onto the ray direction (dot product)
+         double tca = lx * dx + ly * dy + lz * dz;
+ 
+         // If tca < 0, the obstacle is strictly behind the ray
+@@ -191,7 +220,7 @@ static double shoot_single_ray(int drone_index, double ox, double oy, double oz,
+         double radius2 = DRONE_RADIUS * DRONE_RADIUS;
+ 
+         if (L2 <= radius2) {
+-            return 0.0; 
++            return 0.0; // The ray originated inside another drone
+         }
+ 
+         double tca = lx * dx + ly * dy + lz * dz;
+@@ -250,6 +279,7 @@ void print_lidar_rays(double distances[NUM_RAYS], double current_time, double dx
+     }
+     printf("----------------------------------------------------------\n");
+ }
++
+ void export_environment(const char* filename) {
+     FILE* f = fopen(filename, "w");
+     if (f == NULL) {
+@@ -274,7 +304,10 @@ void export_environment(const char* filename) {
+     
+     fclose(f);
+ }
+-void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
++
++// --- DYNAMIC MISSION FUNCTIONS ---
++
++void generate_mission_environment(unsigned int seed, int req_drones, int req_obstacles, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
+     env_rand_state = seed;
+     map_x_max = env_rand_double(40.0, 80.0);
+     map_x_min = -map_x_max;
+@@ -283,7 +316,11 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
+     map_y_min = 0.0;
+     map_y_max = env_rand_double(40.0, 50.0);
+ 
+-    num_active_obstacles = 2 + (env_rand() % 5);
++    // Dynamic obstacle clamping based on mission args
++    num_active_obstacles = req_obstacles; 
++    if (num_active_obstacles < 0) num_active_obstacles = 2 + (env_rand() % 5); 
++    if (num_active_obstacles > MAX_OBSTACLES) num_active_obstacles = MAX_OBSTACLES;
++
+     for (int i = 0; i < num_active_obstacles; i++) {
+         obstacles[i].radius = env_rand_double(8.0, 25.0);
+         obstacles[i].x = env_rand_double(map_x_min + obstacles[i].radius, map_x_max - obstacles[i].radius);
+@@ -291,8 +328,12 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
+         obstacles[i].y = 0.0;
+     }
+ 
+-    num_active_drones = 1 + (env_rand() % N_DRONES);
++    // Dynamic drone clamping based on mission args
++    num_active_drones = req_drones; 
++    if (num_active_drones <= 0) num_active_drones = 1 + (env_rand() % N_DRONES); 
++    if (num_active_drones > N_DRONES) num_active_drones = N_DRONES;
+ 
++    // Secure spawning strictly on the seabed
+     for (int d = 0; d < num_active_drones; d++) {
+         int safe_spawn = 0;
+         while (!safe_spawn) {
+@@ -330,16 +371,19 @@ void generate_mission_environment(unsigned int seed, double out_startX[N_DRONES]
+ void generate_local_target(double cx, double cy, double cz, double* tx, double* ty, double* tz, double radius) {
+     int safe_target = 0;
+     while (!safe_target) {
++        // Offset the target relative to the current drone position
+         double ox = env_rand_double(-radius, radius);
+         double oy = env_rand_double(-radius, radius);
+         double oz = env_rand_double(-radius, radius);
+         
++        // Ensure the offset is strictly within the requested radius (spherical volume)
+         if (ox*ox + oy*oy + oz*oz > radius*radius) continue;
+ 
+         *tx = cx + ox;
+         *ty = cy + oy;
+         *tz = cz + oz;
+ 
++        // Clamp target strictly within map boundaries to avoid impossible goals
+         if (*tx < map_x_min + 5.0) *tx = map_x_min + 5.0;
+         if (*tx > map_x_max - 5.0) *tx = map_x_max - 5.0;
+         if (*ty < 5.0) *ty = 5.0; 
+@@ -348,6 +392,7 @@ void generate_local_target(double cx, double cy, double cz, double* tx, double*
+         if (*tz > map_z_max - 5.0) *tz = map_z_max - 5.0;
+ 
+         safe_target = 1;
++        // Verify the new target is not inside a static mountain
+         for (int i = 0; i < num_active_obstacles; i++) {
+             double dx = *tx - obstacles[i].x;
+             double dy = *ty - obstacles[i].y;
+diff --git a/src/evolution.c b/src/evolution.c
+index 9892c54..34dce6e 100644
+--- a/src/evolution.c
++++ b/src/evolution.c
+@@ -1,10 +1,19 @@
++´╗┐/**
++ * @file evolution.c
++ * @brief Implementation of the OpenAI Evolution Strategy and FMU co-simulation.
++ */
++
+ #include "evolution.h"
+-#include "environment.h"
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <math.h>
+ #include <time.h>
+ 
++#ifndef M_PI
++#define M_PI 3.14159265358979323846
++#endif
++
++// --- MAXIMUM PHYSICAL LIMITS ---
+ // --- VALUE REFERENCES FROM XML ---
+ #define VR_BATTERY 14
+ #define VR_UX 18  
+@@ -17,24 +26,26 @@
+ #define VR_START_X 35
+ #define VR_START_Y 36 
+ #define VR_START_Z 37 
+-// Maximum engine thrust in Newtons. Multiplies the [-1, 1] network output.
++// Maximum engine thrust in Newtons.
+ #define MAX_THRUST 20.0 
+ 
+-#ifndef M_PI
+-#define M_PI 3.14159265358979323846
+-#endif
+-
+ // ============================================================================
+ // MATHEMATICAL UTILITIES
+ // ============================================================================
+ 
+-// Box-Muller transform: converts uniform pseudo-random numbers (rand) 
+-// into a Standard Normal distribution (mean 0, variance 1).
+-// Essential for generating the noise matrices (Epsilon) for the ES.
++/**
++ * @brief Generates a random number from a Standard Normal Distribution N(0, 1).
++ *
++ * Uses the Box-Muller transform to convert uniformly distributed random numbers
++ * into normally distributed ones. Essential for generating Gaussian noise 
++ * during the Evolution Strategy weight jittering phase.
++ *
++ * @return A random double drawn from a Gaussian distribution with mean 0 and std 1.
++ */
+ static double randn(void) {
+     double u1 = ((double)rand() / RAND_MAX);
+     double u2 = ((double)rand() / RAND_MAX);
+-    if (u1 <= 1e-9) u1 = 1e-9; // Avoids log(0) which would cause a crash (NaN)
++    if (u1 <= 1e-7) u1 = 1e-7; // Prevent log(0)
+     return sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+ }
+ 
+@@ -42,12 +53,28 @@ static double randn(void) {
+ // SIMULATION ENGINE AND FITNESS FUNCTION
+ // ============================================================================
+ 
+-// Executes a single simulation episode for a specific Neural Network across multiple drones.
+-static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES], double start_y[N_DRONES], double start_z[N_DRONES], NeuralNetwork* nn, FILE* csv_file) {
++/**
++ * @brief Executes a single simulation episode for a specific Neural Network across multiple drones.
++ *
++ * Initializes the FMUs, runs the simulation loop step-by-step, calculates LIDAR rays,
++ * feeds them to the Neural Network, and applies the output thrust back to the FMU.
++ * It accumulates fitness based on distance covered, energy used, and collisions.
++ *
++ * @param fmus Array of loaded FMU instances.
++ * @param start_x Array of initial X coordinates.
++ * @param start_y Array of initial Y coordinates.
++ * @param start_z Array of initial Z coordinates.
++ * @param nn Pointer to the Neural Network variant being evaluated.
++ * @param telemetry_csv Optional FILE pointer to record telemetry (NULL during training).
++ * @return The average fitness obtained by the active drones in this episode.
++ */
++static double run_episode(fmi2_import_t* fmus[N_DRONES], 
++                          double start_x[N_DRONES], double start_y[N_DRONES], double start_z[N_DRONES], 
++                          NeuralNetwork* nn, FILE* telemetry_csv) {
+     
+     double t_start = 0.0;
+-    double t_end = 60.0;  // The episode lasts a maximum of 60 virtual seconds
+-    double step_size = 0.05; // Solver resolution: 50 milliseconds
++    double t_end = 300.0;     /**< Maximum simulation time: 5 minutes. */
++    double step_size = 0.05;  /**< Solver resolution: 50 milliseconds per tick. */
+     
+     int active[N_DRONES];
+     double fitnesses[N_DRONES];
+@@ -56,120 +83,129 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
+     double current_y[N_DRONES];
+     double current_z[N_DRONES];
+     double current_battery[N_DRONES];
+-
+-    fmi2_value_reference_t vr_starts[3] = { VR_START_X, VR_START_Y, VR_START_Z };
+-    fmi2_value_reference_t vr_inputs[3] = { VR_UX, VR_UY, VR_UZ };
+-    fmi2_value_reference_t vr_outputs[4] = { VR_X, VR_Y, VR_Z, VR_BATTERY };
+     
++    // 1. INITIALIZE ALL ACTIVE DRONES
+     for (int d = 0; d < num_active_drones; d++) {
+         fmi2_import_setup_experiment(fmus[d], fmi2_true, 1e-4, t_start, fmi2_true, t_end);
+         
+-        double start_vals[3] = { start_x[d], start_y[d], start_z[d] };
+-        fmi2_import_set_real(fmus[d], vr_starts, 3, start_vals);
++        fmi2_value_reference_t init_vr[3] = {VR_START_X, VR_START_Y, VR_START_Z};
++        double init_val[3] = {start_x[d], start_y[d], start_z[d]};
++        fmi2_import_set_real(fmus[d], init_vr, 3, init_val);
++        
+         fmi2_import_enter_initialization_mode(fmus[d]);
+         fmi2_import_exit_initialization_mode(fmus[d]);
+         
+         active[d] = 1;
+         fitnesses[d] = 0.0;
+         
++        // Calculate initial distance to target
+         double dx = target_x[d] - start_x[d];
+         double dy = target_y[d] - start_y[d];
+         double dz = target_z[d] - start_z[d];
+         previous_distances[d] = sqrt(dx*dx + dy*dy + dz*dz);
++        
+         current_x[d] = start_x[d];
+         current_y[d] = start_y[d];
+         current_z[d] = start_z[d];
++        current_battery[d] = 100.0; // Battery starts full
+     }
+-    
+-    // Disable inactive drones
++
++    // Disable inactive drones explicitly
+     for (int d = num_active_drones; d < N_DRONES; d++) {
+         active[d] = 0;
+         fitnesses[d] = 0.0;
+     }
+     
+     double current_time = t_start;
++    fmi2_value_reference_t out_vr[4] = {VR_X, VR_Y, VR_Z, VR_BATTERY}; // x, y, z, battery
++    fmi2_value_reference_t in_vr[3] = {VR_UX, VR_UY, VR_UZ};     // ux, uy, uz
+     
+-    while (current_time < t_end) {
+-        int any_active = 0;
+-        
+-        // 1. Read Positions
+-        for (int d = 0; d < N_DRONES; d++) {
+-            if (!active[d]) continue;
+-            any_active = 1;
+-            
+-            double output_values[4];
+-            fmi2_import_get_real(fmus[d], vr_outputs, 4, output_values);
+-            current_x[d] = output_values[0];
+-            current_y[d] = output_values[1];
+-            current_z[d] = output_values[2];
+-            current_battery[d] = output_values[3];
+-        }
++    int any_crashed = 0;
++    
++    // 2. MAIN CO-SIMULATION LOOP
++    while (current_time < t_end && !any_crashed) {
+         
+-        if (!any_active) break;
++        int all_done = 1;
+         
+-        if (csv_file != NULL) {
+-            fprintf(csv_file, "%.3f", current_time);
+-            for (int d = 0; d < N_DRONES; d++) {
+-                fprintf(csv_file, ",%.3f,%.3f,%.3f,%.3f", current_x[d], current_y[d], current_z[d], current_battery[d]);
++        // Write Telemetry for ALL drones, active or not
++        if (telemetry_csv != NULL) {
++            fprintf(telemetry_csv, "%f", current_time);
++            for (int d = 0; d < num_active_drones; d++) {
++                fprintf(telemetry_csv, ",%f,%f,%f,%f", current_x[d], current_y[d], current_z[d], current_battery[d]);
+             }
+-            fprintf(csv_file, "\n");
+         }
+         
+-        int any_crashed = 0;
+-        
+-        // 2. Compute Lidar and Process Neural Nets
+         for (int d = 0; d < num_active_drones; d++) {
+             if (!active[d]) continue;
++            all_done = 0;
++            
++            // Extract current physical state from the FMU solver
++            double out_val[4];
++            fmi2_import_get_real(fmus[d], out_vr, 4, out_val);
++            current_x[d] = out_val[0];
++            current_y[d] = out_val[1];
++            current_z[d] = out_val[2];
++            current_battery[d] = out_val[3];
+             
++            // Raycasting simulation: shoot LIDAR rays from the drone
+             double lidar_distances[NUM_RAYS];
+             compute_lidar_rays(d, current_x[d], current_y[d], current_z[d], current_x, current_y, current_z, active, lidar_distances);
+             
++            // Collision Detection
+             int collision = 0;
+-            double nn_inputs[NN_INPUT_SIZE];
+-            double nn_outputs[NN_OUTPUT_SIZE];
+-            
+             for (int i = 0; i < NUM_RAYS; i++) {
+-                nn_inputs[i] = lidar_distances[i] / MAX_LIDAR_RANGE;
+-                if (lidar_distances[i] <= 0.5) collision = 1; 
++                if (lidar_distances[i] < DRONE_RADIUS * 1.5) {
++                    collision = 1;
++                    break;
++                }
+             }
+             
++            // FITNESS CALCULATION
+             double dx = target_x[d] - current_x[d];
+             double dy = target_y[d] - current_y[d];
+             double dz = target_z[d] - current_z[d];
+             double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
+             
++            // Reward: Closing the distance to the target
+             double progress = previous_distances[d] - current_distance;
+             fitnesses[d] += progress * 100.0;
+             previous_distances[d] = current_distance;
+             
++            // Penalty: Collision detected
+             if (collision) {
+                 fitnesses[d] -= 500.0;
+                 active[d] = 0;
+ #if ENABLE_TEAM_CRASH
+                 any_crashed = 1; // Team crash!
+-                break;
+-#else
+-                continue; // Independent training: just this drone fails
+ #endif
++                continue;
+             }
+             
++            // Penalty: Battery completely depleted
+             if (current_battery[d] <= 0.0) {
+                 fitnesses[d] -= 1000.0;
+                 active[d] = 0;
+ #if ENABLE_TEAM_CRASH
+                 any_crashed = 1; // Team crash!
+-                break;
+-#else
+-                continue; // Independent training: just this drone fails
+ #endif
++                continue;
+             }
+             
++            // Big Reward: Reached the target
+             if (current_distance < 5.0) {
++                // Flat bonus + efficiency bonus for remaining battery
+                 fitnesses[d] += 1000.0 + (current_battery[d] * 50.0);
+                 active[d] = 0;
+                 continue;
+             }
+             
++            // PREPARE NEURAL NETWORK INPUTS
++            double nn_inputs[NN_INPUT_SIZE];
++            for (int i = 0; i < NUM_RAYS; i++) {
++                nn_inputs[i] = lidar_distances[i] / MAX_LIDAR_RANGE; // Normalize [0, 1]
++            }
++            
++            // Provide normalized directional vector towards target (Versor)
+             if (current_distance > 0.001) {
+                 nn_inputs[64] = dx / current_distance;
+                 nn_inputs[65] = dy / current_distance;
+@@ -179,57 +215,68 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
+                 nn_inputs[65] = 0.0;
+                 nn_inputs[66] = 0.0;
+             }
++            
++            // Provide normalized battery level [0, 1]
+             nn_inputs[67] = current_battery[d] / 100.0;
+             
++            double nn_outputs[NN_OUTPUT_SIZE];
++            
++            // Perform the inference pass
+             nn_feedforward(nn, nn_inputs, nn_outputs);
+             
++            // Regularization Penalty: Discourage erratic or maximum continuous thrust (efficiency)
+             double effort = (nn_outputs[0]*nn_outputs[0] + nn_outputs[1]*nn_outputs[1] + nn_outputs[2]*nn_outputs[2]);
+             fitnesses[d] -= effort * 0.01;
+             
++            // Apply Neural Output to Physical Engine (scaled by max engine strength)
+             double input_values[3];
+             input_values[0] = nn_outputs[0] * MAX_THRUST;
+             input_values[1] = nn_outputs[1] * MAX_THRUST;
+             input_values[2] = nn_outputs[2] * MAX_THRUST;
+             
+-            fmi2_import_set_real(fmus[d], vr_inputs, 3, input_values);
+-            fmi2_import_do_step(fmus[d], current_time, step_size, fmi2_true);
++            fmi2_import_set_real(fmus[d], in_vr, 3, input_values);
++        }
++        
++        if (telemetry_csv != NULL) fprintf(telemetry_csv, "\n");
++        if (all_done) break;
++        
++        // Advance FMU integration step
++        for (int d = 0; d < num_active_drones; d++) {
++            if (active[d]) {
++                fmi2_import_do_step(fmus[d], current_time, step_size, fmi2_true);
++            }
+         }
+         
+-#if ENABLE_TEAM_CRASH
+-        if (any_crashed) break; // Terminate episode for all drones
+-#endif
+-
+         current_time += step_size;
+     }
+     
++    // 3. CLEANUP AND TERMINATION
+     double total_fitness = 0.0;
+     for (int d = 0; d < num_active_drones; d++) {
+         fmi2_import_terminate(fmus[d]);
+-        fmi2_import_reset(fmus[d]);
++        fmi2_import_reset(fmus[d]); // CRITICAL: Resets FMU memory state for next episode
+         total_fitness += fitnesses[d];
+     }
+     
+     // Normalize fitness by the number of active drones to stabilize the algorithm 
+-    // across random environments with varying density
++    // across random environments with varying drone density
+     return total_fitness / num_active_drones; 
+ }
+ 
+ // ============================================================================
+-// OPTIMIZATION ALGORITHM (OpenAI ES - Algorithm 1)
++// TRAINING FUNCTION (Evolution Strategy)
+ // ============================================================================
+ 
+ void es_train(fmi2_import_t* fmus[N_DRONES]) {
+-    
+-    // Initializes the Original Network (Master) with random weights
++    srand(42); 
++
+     NeuralNetwork base_nn;
+     nn_init_random(&base_nn);
+-    
+-    // Treats the entire structure (Weights and Biases) as a single continuous block in RAM.
+-    // This pointer trick avoids complex nested loops.
++
+     int num_params = sizeof(NeuralNetwork) / sizeof(double);
+     printf("Starting ES Optimization | %d Neural Parameters | Population: %d\n\n", num_params, POPULATION_SIZE);
+ 
+-    // Allocates arrays for noise tensors, perturbed cloned networks, and fitnesses
++    // Allocates arrays for noise matrices, perturbed cloned networks, and fitness scores
+     NeuralNetwork* epsilons = malloc(POPULATION_SIZE * sizeof(NeuralNetwork));
+     NeuralNetwork* perturbed_nns = malloc(POPULATION_SIZE * sizeof(NeuralNetwork));
+     double* fitnesses = malloc(POPULATION_SIZE * sizeof(double));
+@@ -244,16 +291,14 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
+         fprintf(time_csv, "Generation,TimeSeconds\n");
+     }
+ 
+-    // GENERATIONAL LOOP
++    // MAIN GENERATIONAL LOOP
+     for (int gen = 0; gen < GENERATIONS; gen++) {
+         clock_t gen_start = clock();
+          
+-        // A & B. Procedural Environmental Regeneration and Population Evaluation
+-        // Step 3 and 4 of OpenAI ES Algorithm 1
+-
+         double total_fitness = 0.0;
+         double max_fitness = -9999.0;
+ 
++        // FASE DI CAMPIONAMENTO MONTE CARLO
+         for (int p = 0; p < POPULATION_SIZE; p++) {
+             
+             double* base_ptr = (double*)&base_nn;
+@@ -262,32 +307,30 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
+ 
+             // Noise generation for each single neural weight
+             for (int i = 0; i < num_params; i++) {
+-                eps_ptr[i] = randn(); // Extraction from N(0, I)
++                eps_ptr[i] = randn(); // Draw from standard normal distribution
+                 
+-                // Creation of the perturbed network: Theta_perturbed = Theta_base + Sigma * Epsilon
++                // Creation of the perturbed network variant: W_variant = W + (Sigma * Epsilon)
+                 pert_ptr[i] = base_ptr[i] + SIGMA * eps_ptr[i];
+             }
+ 
+             double clone_total_fitness = 0.0;
+             
+-            // Monte Carlo evaluation (M simulations)
++            // Evaluate clone across multiple procedural environments (M Simulations)
+             for (int m = 0; m < MONTECARLO_SAMPLES; m++) {
+                 unsigned int env_seed = 42 + (gen * MONTECARLO_SAMPLES) + m;
+                 double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
+                 
+-                // 1. Generate random environment
+                 generate_random_environment(env_seed, start_x, start_y, start_z);
+                 
+-                // Export only the first environment for visualization
++                // Export only the first environment topology for Python visualization
+                 if (p == 0 && m == 0) {
+                     export_environment("environment.csv"); 
+                 }
+ 
+-                // 2 & 3. Send clone into the simulator and accumulate fitness
+                 clone_total_fitness += run_episode(fmus, start_x, start_y, start_z, &perturbed_nns[p], NULL);
+             }
+             
+-            // 4. Calculate the average reward over M simulations
++            // The score of this clone is the average reward over the M simulations
+             fitnesses[p] = clone_total_fitness / MONTECARLO_SAMPLES;
+             
+             total_fitness += fitnesses[p];
+@@ -295,42 +338,37 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
+         }
+ 
+         // ====================================================================
+-        // Z-SCORE FITNESS NORMALIZATION
+-        // Trasforma i ritorni in modo che abbiano media 0 e deviazione standard 1
++        // Z-SCORE FITNESS NORMALIZATION (Crucial for ES stability)
++        // Transforms the raw returns into a distribution with mean 0 and std 1.
+         // ====================================================================
+-        double mean_fitness = 0.0;
+-        for (int p = 0; p < POPULATION_SIZE; p++) {
+-            mean_fitness += fitnesses[p];
+-        }
+-        mean_fitness /= POPULATION_SIZE;
++        double mean_fitness = total_fitness / POPULATION_SIZE;
+ 
+         double std_fitness = 0.0;
+         for (int p = 0; p < POPULATION_SIZE; p++) {
+             std_fitness += (fitnesses[p] - mean_fitness) * (fitnesses[p] - mean_fitness);
+         }
+         std_fitness = sqrt(std_fitness / POPULATION_SIZE);
+-        if (std_fitness < 1e-8) std_fitness = 1e-8; // Previene divisione per zero
++        if (std_fitness < 1e-8) std_fitness = 1e-8; // Prevent division by zero
+ 
+         for (int p = 0; p < POPULATION_SIZE; p++) {
+-            // Sostituisce la fitness grezza con il suo Z-Score
+             fitnesses[p] = (fitnesses[p] - mean_fitness) / std_fitness; 
+         }
+         // ====================================================================
+ 
+-        // C. Master Weight Vector Update (Step 5 of OpenAI ES Algorithm 1)
++        // FASE DI AGGIORNAMENTO DEI PESI PRINCIPALI
+         double* base_ptr = (double*)&base_nn;
+         for (int i = 0; i < num_params; i++) {
+             double gradient_estimate = 0.0;
+             
+-            // For each parameter 'i', the gradient is the weighted sum of the noise (epsilon)
+-            // multiplied by the fitness obtained by that specific clone.
+-            // The networks that won (high fitness) will 'pull' the weights in their direction.
++            // For each parameter 'i', the estimated gradient is the weighted sum 
++            // of the noise (epsilon) multiplied by the Z-Score fitness obtained by that clone.
+             for (int p = 0; p < POPULATION_SIZE; p++) {
+                 double* eps_ptr = (double*)&epsilons[p];
+                 gradient_estimate += fitnesses[p] * eps_ptr[i];
+             }
+             
+-            // Update formula: Theta_new = Theta_old + Alpha * [ (1 / n*Sigma) * Sum(F_i * Eps_i) ]
++            // Stochastic Gradient Descent Update Formula:
++            // W = W + Alpha * (Gradient_Estimate / (POPULATION_SIZE * Sigma))
+             base_ptr[i] += LEARNING_RATE * gradient_estimate / (POPULATION_SIZE * SIGMA);
+         }
+ 
+@@ -341,21 +379,16 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
+             fflush(fitness_csv);
+         }
+ 
+-        // D. Offline Telemetry Recording for Visual Evaluation
+-        // Performs an extra rollout with the MASTER network (no noise) to record what it has learned.
++        // FASE DI ESPORTAZIONE TELEMETRIA
++        // Performs an extra rollout using the updated MASTER network (no noise) to record 
++        // the swarm's actual flight path for visual evaluation in Python.
+         
+         unsigned int telemetry_seed = 42 ; 
+         double tel_start_x[N_DRONES], tel_start_y[N_DRONES], tel_start_z[N_DRONES];
+         generate_random_environment(telemetry_seed, tel_start_x, tel_start_y, tel_start_z);
+         
+-        FILE* telemetry_csv = fopen("telemetry.csv", "w");
+-        if (telemetry_csv != NULL) {
+-            fprintf(telemetry_csv, "time"); 
+-            for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d,bat%d", d, d, d, d);
+-            fprintf(telemetry_csv, "\n");
+-            run_episode(fmus, tel_start_x, tel_start_y, tel_start_z, &base_nn, telemetry_csv);
+-            fclose(telemetry_csv);
+-        }
++        // We only evaluate fitness here, no need to overwrite telemetry.csv during training
++        run_episode(fmus, tel_start_x, tel_start_y, tel_start_z, &base_nn, NULL);
+         
+         if (time_csv != NULL) {
+             clock_t gen_end = clock();
+@@ -366,17 +399,13 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
+         }
+     }
+ 
+-    if (fitness_csv != NULL) {
+-        fclose(fitness_csv);
+-    }
+-    if (time_csv != NULL) {
+-        fclose(time_csv);
+-    }
++    if (fitness_csv != NULL) fclose(fitness_csv);
++    if (time_csv != NULL) fclose(time_csv);
+     
+-    // Salva il Cervello Master definitivo su disco
++    // Save the final master brain to disk
+     nn_save(&base_nn, "best_model.bin");
+ 
+-    // Memory de-allocation to prevent leaks
++    // Memory de-allocation
+     free(epsilons);
+     free(perturbed_nns);
+     free(fitnesses);
+@@ -398,8 +427,7 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
+     printf("\n>>> PRE-TRAINED MODEL SUCCESSFULLY LOADED FROM %s <<<\n", model_filename);
+ 
+     // 2. Generates a completely new map to test generalization
+-    // Using the current time as seed guarantees a new scenario every time
+-    unsigned int test_seed = 137; //(unsigned int)time(NULL); 
++    unsigned int test_seed = 2000; 
+     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
+     
+     generate_random_environment(test_seed, start_x, start_y, start_z);
+@@ -413,7 +441,7 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
+     FILE* telemetry_csv = fopen("telemetry.csv", "w");
+     if (telemetry_csv != NULL) {
+         fprintf(telemetry_csv, "time"); 
+-        for (int d = 0; d < N_DRONES; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d,bat%d", d, d, d, d);
++        for (int d = 0; d < num_active_drones; d++) fprintf(telemetry_csv, ",x%d,y%d,z%d,bat%d", d, d, d, d);
+         fprintf(telemetry_csv, "\n");
+         
+         printf("\n>>> STARTING INFERENCE FLIGHT...\n");
+@@ -423,4 +451,10 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
+         printf(">>> FLIGHT COMPLETED. Final Fitness: %.2f\n", final_fitness);
+         printf(">>> Run visualize.py to view the drone's trajectory in 3D.\n\n");
+     }
+-}
+\ No newline at end of file
++}
++
++
++
++
++
++
+diff --git a/src/main.c b/src/main.c
+index ab3112c..8fb3093 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -61,7 +61,11 @@ int main(int argc, char* argv[]) {
+ 
+     // --- EXECUTION BRANCH ---
+     if (run_mission) {
+-        es_mission(fmus, "best_model.bin");
++        int req_drones = -1;
++        int req_obstacles = -1;
++        if (argc >= 3) req_drones = atoi(argv[2]);
++        if (argc >= 4) req_obstacles = atoi(argv[3]);
++        es_mission(fmus, "best_model.bin", req_drones, req_obstacles);
+     } else if (run_test) {
+         // Runs the pre-trained neural network on a random map
+         es_test(fmus, "best_model.bin");
+@@ -83,3 +87,4 @@ int main(int argc, char* argv[]) {
+ 
+     return 0;
+ }
++
+diff --git a/src/mission.c b/src/mission.c
+index 64b4671..78b2306 100644
+--- a/src/mission.c
++++ b/src/mission.c
+@@ -1,4 +1,4 @@
+-/**
++´╗┐/**
+  * @file mission.c
+  * @brief Implementation of the dynamic mission simulation and drone state machine.
+  */
+@@ -28,7 +28,7 @@
+ /** @brief Maximum engine thrust (in Newtons) applied to each axis. */
+ #define MAX_THRUST 20.0 
+ 
+-void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
++void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles) {
+     NeuralNetwork nn;
+     
+     // 1. Load the pre-trained neural network weights
+@@ -40,11 +40,11 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
+     printf("\n>>> MISSION SYSTEM INITIALIZED WITH MODEL %s <<<\n", model_filename);
+ 
+     // 2. Generate the mission environment
+-    unsigned int mission_seed = 404; 
++    unsigned int mission_seed = 222; 
+     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
+     
+     // Generates an environment where starting positions are firmly on the seabed
+-    generate_mission_environment(mission_seed, start_x, start_y, start_z);
++    generate_mission_environment(mission_seed, req_drones, req_obstacles, start_x, start_y, start_z);
+     export_environment("mission_environment.csv");
+ 
+     printf("Mission Map Generated (Seed: %u)\n", mission_seed);
+@@ -251,3 +251,5 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
+     }
+     printf(">>> MISSION COMPLETED <<<\n");
+ }
++
++
+diff --git a/src/neural_network.c b/src/neural_network.c
+index 1464b09..5236bd1 100644
+--- a/src/neural_network.c
++++ b/src/neural_network.c
+@@ -1,3 +1,8 @@
++/**
++ * @file neural_network.c
++ * @brief Implementation of the feed-forward Neural Network inference and persistence.
++ */
++
+ #include "neural_network.h"
+ #include <stdlib.h>
+ #include <math.h>
+@@ -5,12 +10,25 @@
+ 
+ // --- ACTIVATION FUNCTIONS ---
+ 
+-// Hyperbolic tangent: squashes any number into the range [-1.0, 1.0]
++/**
++ * @brief Hyperbolic tangent activation function.
++ * 
++ * Squashes any real number into the interval [-1.0, 1.0]. Used to provide 
++ * non-linearity to the hidden layer and bound the outputs to realistic 
++ * engine thrust constraints (Full Reverse to Full Forward).
++ *
++ * @param x The pre-activation sum.
++ * @return The activated value.
++ */
+ static double activation_tanh(double x) {
+     return tanh(x);
+ }
+ 
+-// Helper: Generates a random weight between -1.0 and 1.0
++/**
++ * @brief Helper function to generate a pseudo-random initial weight.
++ *
++ * @return A random double uniformly distributed between -1.0 and 1.0.
++ */
+ static double random_weight(void) {
+     return ((double)rand() / RAND_MAX) * 2.0 - 1.0;
+ }
+@@ -18,7 +36,7 @@ static double random_weight(void) {
+ // --- NETWORK FUNCTIONS ---
+ 
+ void nn_init_random(NeuralNetwork* nn) {
+-    // Initialize Input to Hidden Layer (W1, b1)
++    // 1. Initialize Input -> Hidden Layer parameters (W1, b1)
+     for (int i = 0; i < NN_HIDDEN_SIZE; i++) {
+         nn->b1[i] = random_weight();
+         for (int j = 0; j < NN_INPUT_SIZE; j++) {
+@@ -26,7 +44,7 @@ void nn_init_random(NeuralNetwork* nn) {
+         }
+     }
+     
+-    // Initialize Hidden to Output Layer (W2, b2)
++    // 2. Initialize Hidden -> Output Layer parameters (W2, b2)
+     for (int i = 0; i < NN_OUTPUT_SIZE; i++) {
+         nn->b2[i] = random_weight();
+         for (int j = 0; j < NN_HIDDEN_SIZE; j++) {
+@@ -38,7 +56,8 @@ void nn_init_random(NeuralNetwork* nn) {
+ void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], double outputs[NN_OUTPUT_SIZE]) {
+     double hidden[NN_HIDDEN_SIZE];
+ 
+-    // 1. Pass data from Input Layer to Hidden Layer
++    // 1. Compute activations for the Hidden Layer
++    // For each hidden node, compute the dot product of the input vector and the weight matrix row, then add the bias.
+     for (int i = 0; i < NN_HIDDEN_SIZE; i++) {
+         double sum = nn->b1[i];
+         for (int j = 0; j < NN_INPUT_SIZE; j++) {
+@@ -47,35 +66,36 @@ void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], doubl
+         hidden[i] = activation_tanh(sum);
+     }
+ 
+-    // 2. Pass data from Hidden Layer to Output Layer
++    // 2. Compute activations for the Output Layer
++    // For each output node, compute the dot product of the hidden vector and the weight matrix row, then add the bias.
+     for (int i = 0; i < NN_OUTPUT_SIZE; i++) {
+         double sum = nn->b2[i];
+         for (int j = 0; j < NN_HIDDEN_SIZE; j++) {
+             sum += nn->W2[i][j] * hidden[j];
+         }
+-        // Output is squashed between -1.0 (Full Reverse) and 1.0 (Full Forward)
+         outputs[i] = activation_tanh(sum); 
+     }
+-    
+ }
++
+ void nn_save(NeuralNetwork* nn, const char* filename) {
+-    FILE* f = fopen(filename, "wb"); // "wb" sta per Write Binary
++    FILE* f = fopen(filename, "wb"); // Open in write-binary mode
+     if (f != NULL) {
+-        // Scrive l'intera struttura (pesi e bias) in un colpo solo
++        // Execute a fast memory dump of the entire struct directly to disk
+         fwrite(nn, sizeof(NeuralNetwork), 1, f);
+         fclose(f);
+-        printf(">>> Pesi neurali salvati con successo in: %s\n", filename);
++        printf(">>> Neural weights successfully saved to: %s\n", filename);
+     } else {
+-        printf(">>> ERRORE: Impossibile salvare i pesi in %s\n", filename);
++        printf(">>> ERROR: Unable to save weights to %s\n", filename);
+     }
+ }
+ 
+ int nn_load(NeuralNetwork* nn, const char* filename) {
+-    FILE* f = fopen(filename, "rb"); // "rb" sta per Read Binary
++    FILE* f = fopen(filename, "rb"); // Open in read-binary mode
+     if (f != NULL) {
++        // Read the struct dump back into memory
+         fread(nn, sizeof(NeuralNetwork), 1, f);
+         fclose(f);
+         return 1;
+     }
+     return 0;
+-}
+\ No newline at end of file
++}

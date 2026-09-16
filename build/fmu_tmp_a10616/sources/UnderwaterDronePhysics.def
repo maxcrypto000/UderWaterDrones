@@ -1,0 +1,54 @@
+EXPORTS
+  ;***************************************************
+  ;Common Functions
+  ;****************************************************
+  UnderwaterDronePhysics_fmiGetTypesPlatform @1
+  UnderwaterDronePhysics_fmiGetVersion @2
+  UnderwaterDronePhysics_fmiSetDebugLogging @3
+  UnderwaterDronePhysics_fmiInstantiate @4
+  UnderwaterDronePhysics_fmiFreeInstance @5
+  UnderwaterDronePhysics_fmiSetupExperiment @6
+  UnderwaterDronePhysics_fmiEnterInitializationMode @7
+  UnderwaterDronePhysics_fmiExitInitializationMode @8
+  UnderwaterDronePhysics_fmiTerminate @9
+  UnderwaterDronePhysics_fmiReset @10
+  UnderwaterDronePhysics_fmiGetReal @11
+  UnderwaterDronePhysics_fmiGetInteger @12
+  UnderwaterDronePhysics_fmiGetBoolean @13
+  UnderwaterDronePhysics_fmiGetString @14
+  UnderwaterDronePhysics_fmiSetReal @15
+  UnderwaterDronePhysics_fmiSetInteger @16
+  UnderwaterDronePhysics_fmiSetBoolean @17
+  UnderwaterDronePhysics_fmiSetString @18
+  UnderwaterDronePhysics_fmiGetFMUstate @19
+  UnderwaterDronePhysics_fmiSetFMUstate @20
+  UnderwaterDronePhysics_fmiFreeFMUstate @21
+  UnderwaterDronePhysics_fmiSerializedFMUstateSize @22
+  UnderwaterDronePhysics_fmiSerializeFMUstate @23
+  UnderwaterDronePhysics_fmiDeSerializeFMUstate @24
+  UnderwaterDronePhysics_fmiGetDirectionalDerivative @25
+  ;***************************************************
+  ;Functions for FMI for Model Exchange
+  ;****************************************************
+  UnderwaterDronePhysics_fmiEnterEventMode @26
+  UnderwaterDronePhysics_fmiNewDiscreteStates @27
+  UnderwaterDronePhysics_fmiEnterContinuousTimeMode @28
+  UnderwaterDronePhysics_fmiCompletedIntegratorStep @29
+  UnderwaterDronePhysics_fmiSetTime @30
+  UnderwaterDronePhysics_fmiSetContinuousStates @31
+  UnderwaterDronePhysics_fmiGetDerivatives @32
+  UnderwaterDronePhysics_fmiGetEventIndicators @33
+  UnderwaterDronePhysics_fmiGetContinuousStates @34
+  UnderwaterDronePhysics_fmiGetNominalsOfContinuousStates @35
+  ;***************************************************
+  ;Functions for FMI for Co-Simulation
+  ;****************************************************
+  UnderwaterDronePhysics_fmiSetRealInputDerivatives @36
+  UnderwaterDronePhysics_fmiGetRealOutputDerivatives @37
+  UnderwaterDronePhysics_fmiDoStep @38
+  UnderwaterDronePhysics_fmiCancelStep @39
+  UnderwaterDronePhysics_fmiGetStatus @40
+  UnderwaterDronePhysics_fmiGetRealStatus @41
+  UnderwaterDronePhysics_fmiGetIntegerStatus @42
+  UnderwaterDronePhysics_fmiGetBooleanStatus @43
+  UnderwaterDronePhysics_fmiGetStringStatus @44
