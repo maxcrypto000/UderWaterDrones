@@ -139,7 +139,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
             
             double progress = previous_distances[d] - current_distance;
-            fitnesses[d] += progress * 100.0;
+            fitnesses[d] += progress * 150.0;
             previous_distances[d] = current_distance;
             
             if (collision) {
@@ -164,7 +164,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
 #endif
             }
             
-            if (current_distance < 5.0) {
+            if (current_distance < 3.0) {
                 fitnesses[d] += 1000.0 + (current_battery[d] * 50.0);
                 active[d] = 0;
                 continue;

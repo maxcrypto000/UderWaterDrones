@@ -28,7 +28,7 @@
 /** @brief Maximum engine thrust (in Newtons) applied to each axis. */
 #define MAX_THRUST 20.0 
 
-void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles) {
+void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles,  unsigned int seed) {
     NeuralNetwork nn;
     
     // 1. Load the pre-trained neural network weights
@@ -40,7 +40,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
     printf("\n>>> MISSION SYSTEM INITIALIZED WITH MODEL %s <<<\n", model_filename);
 
     // 2. Generate the mission environment
-    unsigned int mission_seed = 2220; 
+    unsigned int mission_seed = seed; 
     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
     // Generates an environment where starting positions are firmly on the seabed

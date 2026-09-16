@@ -353,12 +353,12 @@ void generate_local_target(double cx, double cy, double cz, double* tx, double* 
         *tz = cz + oz;
 
         // Clamp target strictly within map boundaries to avoid impossible goals
-        if (*tx < map_x_min + 5.0) *tx = map_x_min + 5.0;
-        if (*tx > map_x_max - 5.0) *tx = map_x_max - 5.0;
-        if (*ty < 5.0) *ty = 5.0; 
-        if (*ty > map_y_max - 5.0) *ty = map_y_max - 5.0;
-        if (*tz < map_z_min + 5.0) *tz = map_z_min + 5.0;
-        if (*tz > map_z_max - 5.0) *tz = map_z_max - 5.0;
+        if (*tx < map_x_min + 10.0) *tx = map_x_min + 10.0;
+        if (*tx > map_x_max - 10.0) *tx = map_x_max - 10.0;
+        if (*ty < 10.0) *ty = 10.0; 
+        if (*ty > map_y_max - 10.0) *ty = map_y_max - 10.0;
+        if (*tz < map_z_min + 10.0) *tz = map_z_min + 10.0;
+        if (*tz > map_z_max - 10.0) *tz = map_z_max - 10.0;
 
         safe_target = 1;
         // Verify the new target is not inside a static mountain

@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import sys
@@ -29,12 +29,20 @@ try:
 
     # Create the plot
     plt.figure(figsize=(10, 6))
-    plt.plot(df['Generation'], df['MaxFitness'], label='Max Fitness', color='green', linewidth=2)
-    plt.plot(df['Generation'], df['AverageFitness'], label='Average Fitness', color='blue', linewidth=1.5, alpha=0.8)
+    plt.plot(df['Generation'], df['MaxFitness'], label='Max Fitness', color='green', linewidth=1.5, alpha=0.3)
+    plt.plot(df['Generation'], df['AverageFitness'], label='Average Fitness', color='blue', linewidth=1.5, alpha=0.3)
 
-    plt.xlabel('Generation')
+    # Calcola media mobile per smussare il grafico
+    if len(df) >= 50:
+        ma_max = df['MaxFitness'].rolling(window=50).mean()
+        plt.plot(df['Generation'], ma_max, color='darkgreen', linestyle='-', linewidth=2, label='Media Mobile Max (50 Gen)')
+        
+        ma_avg = df['AverageFitness'].rolling(window=50).mean()
+        plt.plot(df['Generation'], ma_avg, color='darkblue', linestyle='-', linewidth=2, label='Media Mobile Avg (50 Gen)')
+
+    plt.xlabel('Generazione')
     plt.ylabel('Fitness')
-    plt.title('Evolutionary Strategy Training Progress')
+    plt.title('Progresso dell''Addestramento (Evolution Strategy)')
     plt.legend()
     plt.grid(True)
     

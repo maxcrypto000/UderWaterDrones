@@ -63,9 +63,11 @@ int main(int argc, char* argv[]) {
     if (run_mission) {
         int req_drones = -1;
         int req_obstacles = -1;
+        unsigned int m_seed = 100;
         if (argc >= 3) req_drones = atoi(argv[2]);
         if (argc >= 4) req_obstacles = atoi(argv[3]);
-        es_mission(fmus, "best_model.bin", req_drones, req_obstacles);
+        if(argc>= 5) m_seed = atoi(argv[4]);
+        es_mission(fmus, "best_model.bin", req_drones, req_obstacles, m_seed);
     } else if (run_test) {
         // Runs the pre-trained neural network on a random map
         es_test(fmus, "best_model.bin");
