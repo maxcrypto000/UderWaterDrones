@@ -5,7 +5,7 @@
 #include <math.h>
 #include <time.h>
 
-// --- VALUE REFERENCES FROM XML ---
+
 #define VR_BATTERY 14
 #define VR_UX 18  
 #define VR_UY 19
@@ -24,9 +24,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// ============================================================================
-// MATHEMATICAL UTILITIES
-// ============================================================================
+
 
 // Box-Muller transform: converts uniform pseudo-random numbers (rand) 
 // into a Standard Normal distribution (mean 0, variance 1).
@@ -38,9 +36,6 @@ static double randn(void) {
     return sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
 }
 
-// ============================================================================
-// SIMULATION ENGINE AND FITNESS FUNCTION
-// ============================================================================
 
 // Executes a single simulation episode for a specific Neural Network across multiple drones.
 static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES], double start_y[N_DRONES], double start_z[N_DRONES], NeuralNetwork* nn, FILE* csv_file) {
@@ -88,7 +83,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
     }
     
     double current_time = t_start;
-    
+    // Main simulation Loop
     while (current_time < t_end) {
         int any_active = 0;
         
@@ -139,14 +134,16 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
             
             double progress = previous_distances[d] - current_distance;
+            //Reward the drone for moving closer to the target
             fitnesses[d] += progress * 150.0;
             previous_distances[d] = current_distance;
             
             if (collision) {
+                //Penalize the drone for colliding
                 fitnesses[d] -= 500.0;
                 active[d] = 0;
 #if ENABLE_TEAM_CRASH
-                any_crashed = 1; // Team crash!
+                any_crashed = 1; // Team crash
                 break;
 #else
                 continue; // Independent training: just this drone fails
@@ -154,10 +151,11 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             }
             
             if (current_battery[d] <= 0.0) {
+                //Penalize the drone for running out of battery
                 fitnesses[d] -= 1000.0;
                 active[d] = 0;
 #if ENABLE_TEAM_CRASH
-                any_crashed = 1; // Team crash!
+                any_crashed = 1; // Team crash
                 break;
 #else
                 continue; // Independent training: just this drone fails
@@ -165,6 +163,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             }
             
             if (current_distance < 3.0) {
+                //Reward the drone for reaching the target
                 fitnesses[d] += 1000.0 + (current_battery[d] * 50.0);
                 active[d] = 0;
                 continue;
@@ -184,6 +183,7 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
             nn_feedforward(nn, nn_inputs, nn_outputs);
             
             double effort = (nn_outputs[0]*nn_outputs[0] + nn_outputs[1]*nn_outputs[1] + nn_outputs[2]*nn_outputs[2]);
+            //Penalize the drone for using too much energy
             fitnesses[d] -= effort * 0.01;
             
             double input_values[3];
@@ -214,10 +214,8 @@ static double run_episode(fmi2_import_t* fmus[N_DRONES], double start_x[N_DRONES
     return total_fitness / num_active_drones; 
 }
 
-// ============================================================================
-// OPTIMIZATION ALGORITHM (OpenAI ES - Algorithm 1)
-// ============================================================================
 
+//Trains The neural network using the parameters (OpenAI ES - Algorithm 1).
 void es_train(fmi2_import_t* fmus[N_DRONES]) {
     
     // Initializes the Original Network (Master) with random weights
@@ -244,16 +242,14 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
         fprintf(time_csv, "Generation,TimeSeconds\n");
     }
 
-    // GENERATIONAL LOOP
+    // GENERATIONAL LOOP (Main training loop)
     for (int gen = 0; gen < GENERATIONS; gen++) {
         clock_t gen_start = clock();
-         
-        // A & B. Procedural Environmental Regeneration and Population Evaluation
-        // Step 3 and 4 of OpenAI ES Algorithm 1
-
+        //initialize fitness
         double total_fitness = 0.0;
         double max_fitness = -9999.0;
 
+        //CLONE LOOP
         for (int p = 0; p < POPULATION_SIZE; p++) {
             
             double* base_ptr = (double*)&base_nn;
@@ -270,8 +266,9 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
 
             double clone_total_fitness = 0.0;
             
-            // Monte Carlo evaluation (M simulations)
+            // Monte Carlo evaluation (M simulations) each clone of the same generation gets the same M maps
             for (int m = 0; m < MONTECARLO_SAMPLES; m++) {
+                //seed does not depend on the clone index, ensuring fair fitness comparison between clones of the same generation
                 unsigned int env_seed = 42 + (gen * MONTECARLO_SAMPLES) + m;
                 double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
                 
@@ -283,21 +280,18 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
                     export_environment("environment.csv"); 
                 }
 
-                // 2 & 3. Send clone into the simulator and accumulate fitness
+                // Send clone into the simulator and accumulate fitness
                 clone_total_fitness += run_episode(fmus, start_x, start_y, start_z, &perturbed_nns[p], NULL);
             }
             
-            // 4. Calculate the average reward over M simulations
+            //Calculate the average reward over M simulations
             fitnesses[p] = clone_total_fitness / MONTECARLO_SAMPLES;
             
             total_fitness += fitnesses[p];
             if (fitnesses[p] > max_fitness) max_fitness = fitnesses[p];
         }
 
-        // ====================================================================
-        // Z-SCORE FITNESS NORMALIZATION
-        // Trasforma i ritorni in modo che abbiano media 0 e deviazione standard 1
-        // ====================================================================
+        //Fitness normalization
         double mean_fitness = 0.0;
         for (int p = 0; p < POPULATION_SIZE; p++) {
             mean_fitness += fitnesses[p];
@@ -312,12 +306,11 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
         if (std_fitness < 1e-8) std_fitness = 1e-8; // Previene divisione per zero
 
         for (int p = 0; p < POPULATION_SIZE; p++) {
-            // Sostituisce la fitness grezza con il suo Z-Score
+            
             fitnesses[p] = (fitnesses[p] - mean_fitness) / std_fitness; 
         }
-        // ====================================================================
 
-        // C. Master Weight Vector Update (Step 5 of OpenAI ES Algorithm 1)
+        //Master Weight Vector Update 
         double* base_ptr = (double*)&base_nn;
         for (int i = 0; i < num_params; i++) {
             double gradient_estimate = 0.0;
@@ -341,9 +334,7 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
             fflush(fitness_csv);
         }
 
-        // D. Offline Telemetry Recording for Visual Evaluation
-        // Performs an extra rollout with the MASTER network (no noise) to record what it has learned.
-        
+        // Offline Telemetry Recording for Visual Evaluation
         unsigned int telemetry_seed = 42 ; 
         double tel_start_x[N_DRONES], tel_start_y[N_DRONES], tel_start_z[N_DRONES];
         generate_random_environment(telemetry_seed, tel_start_x, tel_start_y, tel_start_z);
@@ -373,7 +364,7 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
         fclose(time_csv);
     }
     
-    // Salva il Cervello Master definitivo su disco
+    // Save the best weights for the neural network
     nn_save(&base_nn, "best_model.bin");
 
     // Memory de-allocation to prevent leaks
@@ -382,14 +373,12 @@ void es_train(fmi2_import_t* fmus[N_DRONES]) {
     free(fitnesses);
 }
 
-// ============================================================================
-// TESTING FUNCTION (Inference Only)
-// ============================================================================
 
+//Tests The neural network using the parameters. (Inference only)
 void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
     NeuralNetwork nn;
     
-    // 1. Loads the pre-trained weights from the binary file
+    // Loads the pre-trained weights from the binary file
     if (!nn_load(&nn, model_filename)) {
         printf(">>> ERROR: Could not load %s. Please run training first!\n", model_filename);
         return;
@@ -397,9 +386,8 @@ void es_test(fmi2_import_t* fmus[N_DRONES], const char* model_filename) {
     
     printf("\n>>> PRE-TRAINED MODEL SUCCESSFULLY LOADED FROM %s <<<\n", model_filename);
 
-    // 2. Generates a completely new map to test generalization
-    // Using the current time as seed guarantees a new scenario every time
-    unsigned int test_seed = 1372; //(unsigned int)time(NULL); 
+    // Generates a completely new map to test generalization
+    unsigned int test_seed = 1372; //seed for reproducing results 
     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
     generate_random_environment(test_seed, start_x, start_y, start_z);

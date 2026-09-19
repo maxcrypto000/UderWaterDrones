@@ -1,4 +1,4 @@
-#ifndef ENVIRONMENT_H
+﻿#ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
 // --- LIDAR SETTINGS ---
@@ -36,7 +36,22 @@ void init_lidar(void);
 void compute_lidar_rays(int drone_index, double drone_x, double drone_y, double drone_z, double current_x[N_DRONES], double current_y[N_DRONES], double current_z[N_DRONES], int active[N_DRONES], double distances[NUM_RAYS]);
 void print_lidar_rays(double distances[NUM_RAYS], double current_time, double dx, double dy, double dz);
 
-// NEW: Procedural Environment Generator
+// Procedural Environment Generator
+/**
+ * @brief Generates a random environment composed by 
+ * 
+ * - number of drones
+ * - map limits
+ * - drones positions
+ * - mountains positions
+ * - targets positions
+ * 
+ * 
+ * @param seed Random seed for reproducible generation.
+ * @param out_startX Array to store the generated X starting coordinates.
+ * @param out_startY Array to store the generated Y starting coordinates.
+ * @param out_startZ Array to store the generated Z starting coordinates.
+ */
 void generate_random_environment(unsigned int seed, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]);
 // Exports the generated environment to a file for Python visualization
 void export_environment(const char* filename);

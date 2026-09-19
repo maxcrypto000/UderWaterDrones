@@ -45,7 +45,7 @@ void generate_random_environment(unsigned int seed, double out_startX[N_DRONES],
     map_y_max = env_rand_double(40.0, 50.0); // Altitude ceiling
 
     // 3. Randomize Mountains (Amount, Size, Position)
-    num_active_obstacles = 2 + (env_rand() % 5); // 2 to 6 mountains
+    num_active_obstacles = 2 + (env_rand() % 5); 
     
     for (int i = 0; i < num_active_obstacles; i++) {
         obstacles[i].radius = env_rand_double(8.0, 25.0);
@@ -150,7 +150,6 @@ static double shoot_single_ray(int drone_index, double ox, double oy, double oz,
         double ly = obstacles[i].y - oy;
         double lz = obstacles[i].z - oz;
 
-        // --- NUOVO CONTROLLO: COLLISIONE INTERNA ---
         // Squared distance from drone to obstacle center
         double L2 = (lx*lx + ly*ly + lz*lz);
         double radius2 = obstacles[i].radius * obstacles[i].radius;
@@ -159,7 +158,6 @@ static double shoot_single_ray(int drone_index, double ox, double oy, double oz,
         if (L2 <= radius2) {
             return 0.0; // Collision! Immediate return.
         }
-        // -------------------------------------------
 
         double tca = lx * dx + ly * dy + lz * dz;
 
@@ -179,7 +177,7 @@ static double shoot_single_ray(int drone_index, double ox, double oy, double oz,
         }
     }
 
-    // 1.5 Check Intersection with Other Drones
+    // Check Intersection with Other Drones
     for (int i = 0; i < N_DRONES; i++) {
         if (i == drone_index || !active[i]) continue;
         
@@ -208,7 +206,7 @@ static double shoot_single_ray(int drone_index, double ox, double oy, double oz,
         }
     }
 
-    // 2. Check Intersection with Map Boundaries (Ray-Plane Intersection)
+    // Check Intersection with Map Boundaries (Ray-Plane Intersection)
     double t_bounds;
     
     // Check X bounds
@@ -274,7 +272,7 @@ void export_environment(const char* filename) {
     
     fclose(f);
 }
-// --- DYNAMIC MISSION FUNCTIONS ---
+
 
 void generate_mission_environment(unsigned int seed, int req_drones, int req_obstacles, double out_startX[N_DRONES], double out_startY[N_DRONES], double out_startZ[N_DRONES]) {
     env_rand_state = seed;
@@ -366,7 +364,7 @@ void generate_local_target(double cx, double cy, double cz, double* tx, double* 
             double dx = *tx - obstacles[i].x;
             double dy = *ty - obstacles[i].y;
             double dz = *tz - obstacles[i].z;
-            double safe_distance = obstacles[i].radius + 5.0;
+            double safe_distance = obstacles[i].radius + 7.0;
             if ((dx*dx + dy*dy + dz*dz) <= (safe_distance * safe_distance)) {
                 safe_target = 0; 
                 break;

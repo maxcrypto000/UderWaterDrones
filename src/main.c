@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
         // Runs the pre-trained neural network on a random map
         es_test(fmus, "best_model.bin");
     } else {
-        // Starts the 1000-generation Evolution Strategy
+        // Starts the Evolution Strategy
         es_train(fmus);
     }
 

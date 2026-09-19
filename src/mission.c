@@ -31,7 +31,7 @@
 void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles,  unsigned int seed) {
     NeuralNetwork nn;
     
-    // 1. Load the pre-trained neural network weights
+    // Load the pre-trained neural network weights
     if (!nn_load(&nn, model_filename)) {
         printf(">>> ERROR: Could not load %s. Please run training first!\n", model_filename);
         return;
@@ -39,7 +39,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
     
     printf("\n>>> MISSION SYSTEM INITIALIZED WITH MODEL %s <<<\n", model_filename);
 
-    // 2. Generate the mission environment
+    // Generate the mission environment
     unsigned int mission_seed = seed; 
     double start_x[N_DRONES], start_y[N_DRONES], start_z[N_DRONES];
     
@@ -49,7 +49,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
 
     printf("Mission Map Generated (Seed: %u)\n", mission_seed);
     
-    // 3. Initialize tracking variables for the Finite State Machine (FSM)
+    // Initialize tracking variables for the Finite State Machine (FSM)
     DroneState state[N_DRONES];
     double base_x[N_DRONES], base_y[N_DRONES], base_z[N_DRONES];
     double current_x[N_DRONES], current_y[N_DRONES], current_z[N_DRONES], current_battery[N_DRONES];
@@ -79,7 +79,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
         active[d] = 0;
     }
     
-    // 4. Configure Simulation Parameters
+    // Configure Simulation Parameters
     double t_start = 0.0;
     double t_end = 300.0;     // Run the mission for a full 5 minutes to observe recharge cycles
     double step_size = 0.05;  // 50 milliseconds step size
@@ -111,10 +111,10 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
     
     printf("\n>>> MISSION STARTED...\n");
     
-    // 5. Main Simulation Loop
+    // Main Simulation Loop
     while (current_time < t_end) {
         
-        // A. Extract current telemetry from the FMUs
+        //Extract current telemetry from the FMUs
         for (int d = 0; d < num_active_drones; d++) {
             if (!active[d]) continue;
             double output_values[4];
@@ -125,7 +125,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
             current_battery[d] = output_values[3];
         }
         
-        // B. Log current state to CSV
+        // Log current state to CSV
         if (telemetry_csv != NULL) {
             fprintf(telemetry_csv, "%.3f", current_time);
             for (int d = 0; d < N_DRONES; d++) {
@@ -140,7 +140,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
             fprintf(telemetry_csv, "\n");
         }
         
-        // C. Evaluate FSM and Neural Network for each drone
+        // Evaluate FSM and Neural Network for each drone
         for (int d = 0; d < num_active_drones; d++) {
             if (!active[d]) continue;
             
@@ -150,13 +150,12 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
             double dz = target_z[d] - current_z[d];
             double current_distance = sqrt(dx*dx + dy*dy + dz*dz);
             
-            // --- STATE MACHINE TRANSITION LOGIC ---
-            
+            //STATE MACHINE TRANSITION LOGIC 
             if (state[d] == STATE_SEEK_TARGET) {
                 // If drone has arrived at its local target 
                 if (current_distance < 7.0) {
                     if (current_battery[d] < BATTERY_LOW_THRESHOLD) {
-                        // Battery is too low. Abort mission and return to base.
+                        // Battery is too low.Return to base.
                         state[d] = STATE_RETURN_BASE;
                         target_x[d] = base_x[d];
                         target_y[d] = base_y[d];
@@ -171,7 +170,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
             } 
             else if (state[d] == STATE_RETURN_BASE) {
                 // If drone has arrived at the charging base
-                if (current_distance < 10.0) {
+                if (current_distance < 7.0) {
                     state[d] = STATE_RECHARGING;
                     printf("T=%.1f | Drone %d arrived at BASE. Recharging...\n", current_time, d);
                 }
@@ -234,7 +233,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
                 input_values[2] = nn_outputs[2] * MAX_THRUST;
             }
             
-            // D. Push inputs into FMU and step the physics engine
+            // Push inputs into FMU and step the physics engine
             fmi2_import_set_real(fmus[d], vr_inputs, 3, input_values);
             fmi2_import_do_step(fmus[d], current_time, step_size, fmi2_true);
         }
@@ -242,7 +241,7 @@ void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int r
         current_time += step_size;
     }
     
-    // 6. Cleanup
+    // Cleanup
     if (telemetry_csv != NULL) fclose(telemetry_csv);
     
     for (int d = 0; d < num_active_drones; d++) {

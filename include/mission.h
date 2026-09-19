@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file mission.h
  * @brief Header file defining the dynamic mission simulation for the drone swarm.
  *
@@ -14,7 +14,6 @@
 #include <fmilib.h>
 #include "environment.h"
 
-// --- Configuration Parameters ---
 
 /** @brief Radius (in meters) within which new dynamic targets are generated. */
 #define I_RADIUS 40.0
@@ -35,13 +34,15 @@ typedef enum {
     STATE_RECHARGING    /**< Drone is idle at the base, allowing the FMU to recharge the battery. */
 } DroneState;
 
-// --- Function Prototypes ---
 
 /**
  * @brief Executes the dynamic mission simulation.
  * 
  * @param fmus Array of initialized FMI simulation instances (one per drone).
  * @param model_filename Path to the binary file containing the pre-trained neural network weights.
+ * @param req_drones Number of active drones.
+ * @param req_obstacles Number of static mountains.
+ * @param seed Seed for reproducible generation.
  */
 void es_mission(fmi2_import_t* fmus[N_DRONES], const char* model_filename, int req_drones, int req_obstacles, unsigned int seed);
 

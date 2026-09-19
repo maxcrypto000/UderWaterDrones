@@ -12,7 +12,7 @@ Per compilare ed eseguire il progetto, sono necessari:
 - [CMake](https://cmake.org/) (versione 3.10 o superiore).
 - **Python 3** (con le librerie matplotlib e 
 umpy installate per eseguire le visualizzazioni).
-- (Opzionale) L'eseguibile richiede la cartella mu/ contenente il file UnderwaterDronePhysics.fmu.
+- L'eseguibile richiede la cartella fmu/ contenente il file UnderwaterDronePhysics.fmu.
 
 ## ⚙️ Compilazione
 
@@ -32,61 +32,65 @@ Questo processo compilerà il codice C collegandolo alla libreria *FMILibrary* e
 ## 🚀 Guida all'Utilizzo
 
 L'eseguibile principale offre 3 modalità operative basate sugli argomenti da riga di comando.
-*Assicurati di lanciare l'eseguibile dalla directory uild/ (o assicurati che il percorso dell'FMU sia corretto rispetto a dove lanci il comando).*
+*Assicurati di lanciare l'eseguibile dalla directory build/ (oppure assicurati che il percorso dell'FMU sia corretto rispetto a dove lanci il comando).*
 
 ### 1. Fase di Addestramento (Training)
+**Attenzione**: la fase di addestramento richiede circa 5 ore su portatile; per provare il sistema è consigliato usare la rete pre-addestrata.
 `powershell
-.\DroneTest.exe
+.\build\DroneTest.exe
 `
 Se lanciato senza alcun parametro, il programma avvierà la fase di **Training**.
 - L'algoritmo di Evolution Strategy proverà iterativamente piccole variazioni (jitter) sui pesi della Rete Neurale valutandone le performance (Fitness) nell'evitare ostacoli e raggiungere l'obiettivo.
-- Al termine delle generazioni, il modello migliore verrà salvato nel file binario **est_model.bin**.
-- Verranno generati i file 	elemetry.csv (l'andamento fisico della generazione migliore) e environment.csv (i confini e gli ostacoli della mappa).
+- Al termine delle generazioni, il modello migliore verrà salvato nel file binario best_model.bin.
+- Verranno generati i file telemetry.csv (l'andamento fisico della generazione migliore) e environment.csv (i confini e gli ostacoli della mappa).
 
 ### 2. Fase di Test (Testing)
 `powershell
-.\DroneTest.exe test
+.\build\DroneTest.exe test
 `
 Questa modalità permette di testare la Rete Neurale pre-addestrata su uno scenario generato casualmente.
-- Il programma caricherà i pesi da **est_model.bin**.
+- Il programma caricherà i pesi da best_model.bin.
 - I droni cercheranno di raggiungere l'obiettivo schivando le nuove montagne generate proceduralmente.
 - **Nota**: In questa fase la logica della batteria e la ricarica autonoma non sono attive; serve puramente per testare l'evitamento degli ostacoli (Obstacle Avoidance).
 
 ### 3. Fase di Missione Dinamica (Mission)
 `powershell
-.\DroneTest.exe mission
+.\build\DroneTest.exe mission [num_drones] [num_obstacles] [seed]
 `
 Questa modalità lancia il simulatore avanzato governato da una **Macchina a Stati Finiti**.
-- Utilizza **est_model.bin** per guidare i droni.
+- Utilizza best_model.bin per guidare i droni.
 - Ai droni viene assegnato un target dinamicamente. Appena raggiunto, ne viene generato uno nuovo entro un raggio specificato (I_RADIUS).
-- **Energy Management**: Se la batteria scende sotto il 30%, il drone ignorerà l'esplorazione e utilizzerà la rete neurale per tornare alla sua **Base di Ricarica** (punto di spawn originario). Lì taglierà la spinta e aspetterà di raggiungere il 90% di batteria prima di riprendere la missione.
-- Verranno generati i file **mission_telemetry.csv** e **mission_environment.csv**.
+- Puoi personalizzare la missione passando opzionalmente il numero di droni (max 5), il numero di ostacoli (max 10) e un seed per la mappa. Es: .\build\DroneTest.exe mission 3 5 42
+- **Energy Management**: Se la batteria scende sotto al BATTERY_LOW_THRESHOLD (50%), il drone ignorerà l'esplorazione e utilizzerà la rete neurale per tornare alla sua **Base di Ricarica** (punto di spawn originario). Lì taglierà la spinta e aspetterà di raggiungere il 95% di batteria prima di riprendere la missione.
+- Verranno generati i file mission_telemetry.csv e mission_environment.csv.
 
 ---
 
-## 📊 Visualizzazione e Strumentazione 3D
+## 📈 Visualizzazione e Strumentazione
 
-Sono forniti diversi script Python per visualizzare i risultati. *Tutti gli script vanno idealmente eseguiti dalla cartella dove vengono generati i CSV (ad es. uild/).*
+Sono forniti diversi script Python per analizzare i risultati e visualizzare le simulazioni 3D. 
 
-#### Andamento dell'Addestramento (Fitness)
-Se vuoi vedere quanto la rete neurale sta migliorando nel corso delle generazioni:
+#### Andamento dell'Addestramento (Fitness & Tempi)
+Per vedere quanto la rete neurale sta migliorando nel corso delle generazioni:
 `powershell
-python ../plot_fitness.py
+python plot_fitness.py
+`
+Per visualizzare i tempi effettivi di calcolo per ogni singola generazione:
+`powershell
+python build\plot_times.py
 `
 
 #### Visualizzazione 3D: Training e Test
-Per visualizzare in 3D le traiettorie e i lidar della modalità di Test o dell'individuo migliore del Training:
+Per visualizzare in 3D le traiettorie della modalità di Test o dell'individuo migliore del Training:
 `powershell
-python visualize.py
+python build\visualize.py
 `
-*(Assicurati che i file environment.csv e 	elemetry.csv siano presenti nella stessa cartella).*
 
 #### Visualizzazione 3D: Missione Dinamica
 Per visualizzare in tempo reale lo stato delle batterie, i target dinamici che cambiano nel tempo, e le basi di ricarica generate dalla modalità Mission:
 `powershell
-python visualize_mission.py
+python build\visualize_mission.py
 `
-*(Assicurati che i file mission_environment.csv e mission_telemetry.csv siano presenti nella stessa cartella).*
+*(Nota: Nello script visualize_mission.py è presente una variabile SHOW_LIDAR. se impostata su True, verranno visualizzati i raggi LIDAR per capire esattamente cosa stanno "guardando" i droni).*
 
 ---
-*Progetto sviluppato da Massimiliano.*

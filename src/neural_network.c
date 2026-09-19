@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 
-// --- ACTIVATION FUNCTIONS ---
+//ACTIVATION FUNCTIONS
 
 // Hyperbolic tangent: squashes any number into the range [-1.0, 1.0]
 static double activation_tanh(double x) {
@@ -15,7 +15,7 @@ static double random_weight(void) {
     return ((double)rand() / RAND_MAX) * 2.0 - 1.0;
 }
 
-// --- NETWORK FUNCTIONS ---
+//NETWORK FUNCTIONS 
 
 void nn_init_random(NeuralNetwork* nn) {
     // Initialize Input to Hidden Layer (W1, b1)
@@ -38,7 +38,7 @@ void nn_init_random(NeuralNetwork* nn) {
 void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], double outputs[NN_OUTPUT_SIZE]) {
     double hidden[NN_HIDDEN_SIZE];
 
-    // 1. Pass data from Input Layer to Hidden Layer
+    // Pass data from Input Layer to Hidden Layer
     for (int i = 0; i < NN_HIDDEN_SIZE; i++) {
         double sum = nn->b1[i];
         for (int j = 0; j < NN_INPUT_SIZE; j++) {
@@ -47,7 +47,7 @@ void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], doubl
         hidden[i] = activation_tanh(sum);
     }
 
-    // 2. Pass data from Hidden Layer to Output Layer
+    //Pass data from Hidden Layer to Output Layer
     for (int i = 0; i < NN_OUTPUT_SIZE; i++) {
         double sum = nn->b2[i];
         for (int j = 0; j < NN_HIDDEN_SIZE; j++) {
@@ -58,10 +58,10 @@ void nn_feedforward(NeuralNetwork* nn, const double inputs[NN_INPUT_SIZE], doubl
     }
     
 }
+//save weights and biases
 void nn_save(NeuralNetwork* nn, const char* filename) {
-    FILE* f = fopen(filename, "wb"); // "wb" sta per Write Binary
-    if (f != NULL) {
-        // Scrive l'intera struttura (pesi e bias) in un colpo solo
+    FILE* f = fopen(filename, "wb"); 
+    if (f != NULL) {            
         fwrite(nn, sizeof(NeuralNetwork), 1, f);
         fclose(f);
         printf(">>> Pesi neurali salvati con successo in: %s\n", filename);
@@ -71,7 +71,7 @@ void nn_save(NeuralNetwork* nn, const char* filename) {
 }
 
 int nn_load(NeuralNetwork* nn, const char* filename) {
-    FILE* f = fopen(filename, "rb"); // "rb" sta per Read Binary
+    FILE* f = fopen(filename, "rb"); 
     if (f != NULL) {
         fread(nn, sizeof(NeuralNetwork), 1, f);
         fclose(f);
